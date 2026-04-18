@@ -20,6 +20,7 @@ from app.models.schemas import (
     ErrorResponse,
     ReportConfidenceBucket,
     ReportDailyPoint,
+    ReportSummaryPeriod,
     ReportSummaryResponse,
     ReportTagStat,
     STTConfigResponse,
@@ -202,6 +203,12 @@ def _build_report_summary(days: int, filtered: list[CheckinRecord]) -> ReportSum
         confidence_buckets=ReportConfidenceBucket(low=low, medium=medium, high=high),
         top_tags=top_tags,
         daily_recovery=daily_recovery,
+        previous_period=ReportSummaryPeriod(
+            total_checkins=0,
+            avg_recovery_score=0.0,
+            avg_risk_score=0.0,
+            avg_confidence=0.0,
+        ),
     )
 
 
@@ -266,7 +273,40 @@ def report_summary(
     raw_items = list_checkins(limit=limit)
     records = [CheckinRecord(**item) for item in raw_items]
     filtered = _filter_records_by_days(records, days)
-    return _build_report_summary(days=days, filtered=filtered)
+    summary = _build_report_summary(days=days, filtered=filtered)
+    previous_cutoff_end = datetime.now(UTC) - timedelta(days=days)
+    previous_cutoff_start = previous_cutoff_end - timedelta(days=days)
+    previous_filtered: list[CheckinRecord] = []
+    for item in records:
+        created = _parse_created_at_utc(item.created_at)
+        if created is None:
+            continue
+        if previous_cutoff_start <= created < previous_cutoff_end:
+            previous_filtered.append(item)
+
+    prev_total = len(previous_filtered)
+    prev_recovery = (
+        round(sum(item.recovery_score for item in previous_filtered) / prev_total, 2)
+        if prev_total
+        else 0.0
+    )
+    prev_risk = (
+        round(sum(item.risk_score for item in previous_filtered) / prev_total, 2)
+        if prev_total
+        else 0.0
+    )
+    prev_conf = (
+        round(sum(item.confidence for item in previous_filtered) / prev_total, 3)
+        if prev_total
+        else 0.0
+    )
+    summary.previous_period = ReportSummaryPeriod(
+        total_checkins=prev_total,
+        avg_recovery_score=prev_recovery,
+        avg_risk_score=prev_risk,
+        avg_confidence=prev_conf,
+    )
+    return summary
 
 
 @app.get("/report/export-pdf")

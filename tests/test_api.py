@@ -52,6 +52,8 @@ class ApiFlowTests(unittest.TestCase):
         self.assertIn("confidence_buckets", payload)
         self.assertIn("top_tags", payload)
         self.assertIn("daily_recovery", payload)
+        self.assertIn("previous_period", payload)
+        self.assertIn("avg_recovery_score", payload["previous_period"])
 
     def test_report_export_pdf(self):
         res = self.client.post(

@@ -117,6 +117,14 @@ class ReportSummaryResponse(BaseModel):
     confidence_buckets: ReportConfidenceBucket
     top_tags: List[ReportTagStat]
     daily_recovery: List[ReportDailyPoint]
+    previous_period: "ReportSummaryPeriod"
+
+
+class ReportSummaryPeriod(BaseModel):
+    total_checkins: int
+    avg_recovery_score: float
+    avg_risk_score: float
+    avg_confidence: float
 
 
 class STTResponse(BaseModel):

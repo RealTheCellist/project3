@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -22,7 +22,6 @@ class AppColors {
   static const card = Color(0xFFFFFFFF);
   static const text = Color(0xFF1E293B);
   static const muted = Color(0xFF64748B);
-  static const chip = Color(0xFFE2F1EC);
   static const warningBg = Color(0xFFFFF7ED);
   static const warningBorder = Color(0xFFFCD34D);
   static const errorBg = Color(0xFFFFF1F2);
@@ -31,100 +30,6 @@ class AppColors {
 
 class SumpyoApp extends StatelessWidget {
   const SumpyoApp({super.key});
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,13 +40,6 @@ class SumpyoApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         scaffoldBackgroundColor: Colors.transparent,
-        navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Color(0xFFF8F7F2),
-          indicatorColor: Color(0xFFD8EBE4),
-          labelTextStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-        ),
       ),
       home: const RootScreen(),
     );
@@ -167,7 +65,7 @@ class _RootScreenState extends State<RootScreen> {
   List<CheckinHistoryItem> _history = const [];
 
   final TextEditingController _controller = TextEditingController(
-    text: '???노츓?? 嶺뚮씭?껇??筌먲퐣類????ｋ걠???브퀗????釉띾쐠????겶???????怨몃뭵.',
+    text: '오늘은 조금 불안하고 피곤해요.',
   );
   final SpeechToText _speech = SpeechToText();
   final AudioRecorder _recorder = AudioRecorder();
@@ -190,6 +88,29 @@ class _RootScreenState extends State<RootScreen> {
     super.dispose();
   }
 
+  Future<void> _loadHistory({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _historyLoading = true;
+        _historyError = '';
+      });
+    }
+    try {
+      final items = await ApiClient().fetchCheckins(limit: 50);
+      if (!mounted) return;
+      setState(() {
+        _history = items;
+        _historyLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _historyLoading = false;
+        _historyError = 'History load failed: $e';
+      });
+    }
+  }
+
   Future<void> _toggleListening() async {
     if (_listening) {
       await _speech.stop();
@@ -206,12 +127,10 @@ class _RootScreenState extends State<RootScreen> {
             setState(() => _listening = false);
           }
         },
-        onError: (error) {
-          _setError('Speech error: ${error.errorMsg}');
-        },
+        onError: (error) => _setError('Speech error: ${error.errorMsg}'),
       );
       if (!_speechReady) {
-        _setError('Speech recognition permission denied or unavailable.');
+        _setError('Speech recognition unavailable.');
         return;
       }
     }
@@ -235,9 +154,6 @@ class _RootScreenState extends State<RootScreen> {
 
     if (!mounted) return;
     setState(() => _listening = started);
-    if (!started) {
-      _setError('Could not start voice input.');
-    }
   }
 
   Future<void> _toggleRecordingAndUpload() async {
@@ -255,7 +171,7 @@ class _RootScreenState extends State<RootScreen> {
 
     final hasPermission = await _recorder.hasPermission();
     if (!hasPermission) {
-      _setError('Microphone permission is required for recording.');
+      _setError('Microphone permission is required.');
       return;
     }
 
@@ -281,7 +197,6 @@ class _RootScreenState extends State<RootScreen> {
       _status = AnalyzeStatus.loading;
       _lastError = '';
     });
-
     try {
       final stt = await ApiClient().transcribeAudio(
         audioPath,
@@ -298,26 +213,14 @@ class _RootScreenState extends State<RootScreen> {
       await analyze();
     } catch (e) {
       _setError('STT failed: $e');
-      await _fallbackToLocalSpeechInput();
+      await _toggleListening();
     }
-  }
-
-  Future<void> _fallbackToLocalSpeechInput() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          '??類ㅼ뮅 STT?띠럾? ?釉띾쐠??筌먐삳┃???リ옇?쀧뵳??????筌뤾쑬六??怨쀬Ŧ ?熬곥굦???紐껊퉵?? 嶺뚮씭흮????낅슣?섋땻??',
-        ),
-      ),
-    );
-    await _toggleListening();
   }
 
   Future<void> analyze() async {
     final transcript = _controller.text.trim();
     if (transcript.isEmpty) {
-      _setError('Please enter transcript text before analysis.');
+      _setError('분석할 텍스트를 입력하세요.');
       return;
     }
 
@@ -347,135 +250,13 @@ class _RootScreenState extends State<RootScreen> {
     }
   }
 
-  Future<void> _loadHistory({bool silent = false}) async {
-    if (!silent) {
-      setState(() {
-        _historyLoading = true;
-        _historyError = '';
-      });
-    } else {
-      setState(() => _historyError = '');
-    }
-
-    try {
-      final items = await ApiClient().fetchCheckins(limit: 20);
-      if (!mounted) return;
-      setState(() {
-        _history = items;
-        _historyLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _historyLoading = false;
-        _historyError = 'History load failed: $e';
-      });
-    }
-  }
-
   void _setError(String message) {
     if (!mounted) return;
     setState(() {
       _status = AnalyzeStatus.error;
       _lastError = message;
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -498,12 +279,11 @@ class _RootScreenState extends State<RootScreen> {
         status: _status,
         result: _latest,
         errorMessage: _lastError,
-        onStartRoutine: () => setState(() => _index = 2),
         onRetry: analyze,
+        onStartRoutine: () => setState(() => _index = 2),
       ),
       RoutineScreen(result: _latest),
       ReportScreen(
-        result: _latest,
         history: _history,
         loading: _historyLoading,
         errorMessage: _historyError,
@@ -531,22 +311,13 @@ class _RootScreenState extends State<RootScreen> {
             }
           },
           destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.insights_outlined),
-              label: 'Result',
-            ),
+            NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
+            NavigationDestination(icon: Icon(Icons.insights_outlined), label: 'Result'),
             NavigationDestination(
               icon: Icon(Icons.self_improvement_outlined),
               label: 'Routine',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.show_chart_outlined),
-              label: 'Report',
-            ),
+            NavigationDestination(icon: Icon(Icons.show_chart_outlined), label: 'Report'),
           ],
         ),
       ),
@@ -582,457 +353,90 @@ class HomeScreen extends StatelessWidget {
   final String sttProfile;
   final ValueChanged<String> onSttProfileChanged;
 
-  bool get _loading => status == AnalyzeStatus.loading;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final loading = status == AnalyzeStatus.loading;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '?⑦몴 泥댄겕??,
-                    style: TextStyle(
-                      color: AppColors.text,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    '??롳펷 3?? 筌띾뜆?????궗 ?룐뫂?????뽰삂????紐꾩뒄.',
-                    style: TextStyle(fontSize: 15, color: AppColors.muted),
-                  ),
-                ],
-              ),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: const BoxDecoration(
-                  color: AppColors.card,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.spa_rounded, color: AppColors.primary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _HeroScoreCard(score: latestScore),
-          const SizedBox(height: 12),
           const Text(
-            '??⑤베鍮???熬곥룗????????濡?뵹 嶺뚯쉳?????熬곣뫀六???덈펲.',
-            style: TextStyle(fontSize: 13, color: AppColors.muted),
-            textAlign: TextAlign.center,
+            '숨표 체크인',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
           ),
-          if (status == AnalyzeStatus.error && errorMessage.isNotEmpty) ...[
-            const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Text('최근 회복 점수: ${latestScore ?? '--'}', style: const TextStyle(color: AppColors.muted)),
+          const SizedBox(height: 12),
+          if (status == AnalyzeStatus.error && errorMessage.isNotEmpty)
             _InfoBanner(message: errorMessage, tone: BannerTone.error),
-          ],
-          const SizedBox(height: 16),
+          if (status == AnalyzeStatus.error && errorMessage.isNotEmpty) const SizedBox(height: 12),
           _SurfaceCard(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '?뚯꽦 泥댄겕???띿뒪??,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 10),
                 TextField(
                   controller: controller,
                   minLines: 5,
                   maxLines: 8,
-                  style: const TextStyle(fontSize: 16, color: AppColors.text),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: const Color(0xFFFAFAF8),
-                    hintText: 'STT 野껉퀗?드첎? ??由????낆젾??몃빍??',
-                    hintStyle: const TextStyle(color: AppColors.muted),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFD7DCCE)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFD7DCCE)),
-                    ),
+                  decoration: const InputDecoration(
+                    hintText: 'STT 결과가 여기에 입력됩니다.',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _SurfaceCard(
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'STT Profile',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.text,
-                    ),
-                  ),
-                ),
-                DropdownButton<String>(
-                  value: sttProfile,
-                  items: const [
-                    DropdownMenuItem(value: 'fast', child: Text('fast')),
-                    DropdownMenuItem(
-                      value: 'balanced',
-                      child: Text('balanced'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'accurate',
-                      child: Text('accurate'),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Text('STT Profile'),
+                    const SizedBox(width: 10),
+                    DropdownButton<String>(
+                      value: sttProfile,
+                      items: const [
+                        DropdownMenuItem(value: 'fast', child: Text('fast')),
+                        DropdownMenuItem(value: 'balanced', child: Text('balanced')),
+                        DropdownMenuItem(value: 'accurate', child: Text('accurate')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) onSttProfileChanged(value);
+                      },
                     ),
                   ],
-                  onChanged: (value) {
-                    if (value != null) onSttProfileChanged(value);
-                  },
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onToggleRecording,
-            icon: Icon(
-              recording
-                  ? Icons.stop_circle_outlined
-                  : Icons.fiber_manual_record,
-            ),
-            label: Text(
-              recording ? '?獄???繞벿살탳? & ??類ㅼ뮅 STT' : '?獄?????戮곗굚 (??類ㅼ뮅 STT)',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              backgroundColor: recording
-                  ? const Color(0xFFB91C1C)
-                  : AppColors.primaryDark,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onToggleListening,
-                  icon: Icon(
-                    listening ? Icons.mic_off_rounded : Icons.mic_rounded,
-                  ),
-                  label: Text(
-                    listening ? '????????놁졑 繞벿살탳?' : '????????놁졑 ??戮곗굚',
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    side: const BorderSide(color: Color(0xFFB9CFC8)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onToggleRecording,
+                        icon: Icon(recording ? Icons.stop : Icons.fiber_manual_record),
+                        label: Text(recording ? '녹음 중지 & STT' : '녹음 시작 (서버 STT)'),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _loading ? null : onAnalyze,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onToggleListening,
+                        icon: Icon(listening ? Icons.mic_off : Icons.mic),
+                        label: Text(listening ? '음성 입력 중지' : '음성 입력 시작'),
+                      ),
                     ),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          '吏湲?遺꾩꽍',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroScoreCard extends StatelessWidget {
-  const _HeroScoreCard({required this.score});
-
-  final int? score;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final value = score?.toString() ?? '--';
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x332F6B5F),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.favorite_border_rounded,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '???노츓 ???沅??????,
-                  style: TextStyle(color: Color(0xFFE5F2EE), fontSize: 14),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 42,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: loading ? null : onAnalyze,
+                        child: loading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('지금 분석'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1048,129 +452,33 @@ class ResultScreen extends StatelessWidget {
     required this.status,
     required this.result,
     required this.errorMessage,
-    required this.onStartRoutine,
     required this.onRetry,
+    required this.onStartRoutine,
     super.key,
   });
 
   final AnalyzeStatus status;
   final AnalyzeResponse? result;
   final String errorMessage;
-  final VoidCallback onStartRoutine;
   final VoidCallback onRetry;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
+  final VoidCallback onStartRoutine;
 
   @override
   Widget build(BuildContext context) {
     if (status == AnalyzeStatus.loading) {
       return const _CenteredState(
-        icon: Icons.hourglass_top_rounded,
-        title: '?釉뚯뫒??繞벿살탳????덈펲',
-        subtitle: '??ル∥六사춯??リ옇?????낅슣?섋땻??',
+        icon: Icons.hourglass_top,
+        title: '분석 중입니다',
+        subtitle: '잠시만 기다려주세요.',
       );
     }
 
     if (status == AnalyzeStatus.error && result == null) {
       return _CenteredActionState(
         icon: Icons.error_outline,
-        title: '?釉뚯뫒?????덉넮',
-        subtitle: errorMessage.isEmpty
-            ? '???고뱺?????곕뻣 ??類ｌ┣???낅슣?섋땻??'
-            : errorMessage,
-        actionLabel: '???곕뻣 ??類ｌ┣',
+        title: '분석 실패',
+        subtitle: errorMessage,
+        actionLabel: '다시 시도',
         onPressed: onRetry,
       );
     }
@@ -1178,8 +486,8 @@ class ResultScreen extends StatelessWidget {
     if (result == null) {
       return const _CenteredState(
         icon: Icons.insights_outlined,
-        title: '野껉퀗?드첎? ?袁⑹춦 ??곷선??',
-        subtitle: '???遺얇늺?癒?퐣 筌ｋ똾寃?紐꾩뱽 ?브쑴苑????紐꾩뒄.',
+        title: '결과가 아직 없어요',
+        subtitle: '홈에서 체크인을 분석해보세요.',
       );
     }
 
@@ -1188,263 +496,30 @@ class ResultScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x12000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '???沅??????,
-                  style: TextStyle(fontSize: 14, color: AppColors.muted),
-                ),
-                Text(
-                  '${result!.recoveryScore}',
-                  style: const TextStyle(
-                    fontSize: 56,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                    height: 0.95,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  result!.explanation,
-                  style: const TextStyle(fontSize: 16, color: AppColors.muted),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '??濡?뵹 嶺뚯쉳?????熬곣뫀鍮???⑤베鍮???袁⑤뾼???롪퍒?????낅퉵??',
-                  style: TextStyle(fontSize: 13, color: AppColors.muted),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (result!.holdDecision)
-            const _InfoBanner(
-              message: '??ル뱴?熬? ????? 嶺뚳퐢?얍칰?筌뤾쑴諭?2~3?????癰????낅슣?섋땻??',
-              tone: BannerTone.warning,
-            ),
-          if (result!.holdDecision) const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: result!.tags
-                .map(
-                  (tag) => Chip(
-                    label: Text(
-                      tag,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    backgroundColor: AppColors.chip,
-                    side: BorderSide.none,
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 12),
           _SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '???샑???怨뺣콦 ?????,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-                _ScoreBar(
-                  label: 'Self report',
-                  value: result!.componentScores.selfReport,
-                  max: 50,
-                ),
-                _ScoreBar(
-                  label: 'Text signal',
-                  value: result!.componentScores.textSignal,
-                  max: 35,
-                ),
-                _ScoreBar(
-                  label: 'Trend',
-                  value: result!.componentScores.trend,
-                  max: 10,
-                ),
-                _ScoreBar(
-                  label: 'Voice aux',
-                  value: result!.componentScores.voiceAux,
-                  max: 5,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Confidence ${result!.confidence.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 14, color: AppColors.muted),
-                ),
+                Text('회복 점수: ${result!.recoveryScore}',
+                    style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                Text(result!.explanation, style: const TextStyle(color: AppColors.muted)),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          FilledButton(
-            onPressed: onStartRoutine,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(54),
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              '?猷먮쳜????戮곗굚',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          const SizedBox(height: 12),
+          _SurfaceCard(
+            child: Column(
+              children: [
+                _ScoreBar(label: 'Self report', value: result!.componentScores.selfReport, max: 50),
+                _ScoreBar(label: 'Text signal', value: result!.componentScores.textSignal, max: 35),
+                _ScoreBar(label: 'Trend', value: result!.componentScores.trend, max: 10),
+                _ScoreBar(label: 'Voice aux', value: result!.componentScores.voiceAux, max: 5),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScoreBar extends StatelessWidget {
-  const _ScoreBar({
-    required this.label,
-    required this.value,
-    required this.max,
-  });
-
-  final String label;
-  final double value;
-  final double max;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ratio = (value / max).clamp(0, 1).toDouble();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(label, style: const TextStyle(fontSize: 15)),
-              ),
-              Text(
-                value.toStringAsFixed(1),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 8,
-              color: AppColors.primary,
-              backgroundColor: const Color(0xFFE2E8F0),
-            ),
-          ),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: onStartRoutine, child: const Text('루틴 시작')),
         ],
       ),
     );
@@ -1455,168 +530,29 @@ class RoutineScreen extends StatelessWidget {
   const RoutineScreen({required this.result, super.key});
 
   final AnalyzeResponse? result;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     if (result == null) {
       return const _CenteredState(
         icon: Icons.self_improvement_outlined,
-        title: '?袁⑹춦 ?룐뫂?????곷선??',
-        subtitle: '?브쑴苑???袁⑥┷??롢늺 ?곕뗄荑??룐뫂?????뽯뻻??몃빍??',
+        title: '루틴이 아직 없어요',
+        subtitle: '분석 후 추천 루틴이 표시됩니다.',
       );
     }
 
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            '異붿쿇 猷⑦떞',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
+      children: [
+        const Text('추천 루틴', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        ...result!.recommendedRoutines.map(
+          (e) => _SurfaceCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Text(e, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            '吏湲?諛붾줈 ?ㅽ뻾?????덈뒗 2~5遺?猷⑦떞',
-            style: TextStyle(color: AppColors.muted),
-          ),
-          const SizedBox(height: 14),
-          ...result!.recommendedRoutines.map(
-            (routine) => _SurfaceCard(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD8EBE4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      routine,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.text,
-                      ),
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.muted,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1625,7 +561,6 @@ enum ReportRange { days7, days14, days30, all }
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({
-    required this.result,
     required this.history,
     required this.loading,
     required this.errorMessage,
@@ -1633,7 +568,6 @@ class ReportScreen extends StatefulWidget {
     super.key,
   });
 
-  final AnalyzeResponse? result;
   final List<CheckinHistoryItem> history;
   final bool loading;
   final String errorMessage;
@@ -1645,25 +579,47 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   ReportRange _range = ReportRange.days7;
+  bool _summaryLoading = false;
+  String _summaryError = '';
+  ReportSummaryResponse? _summary;
 
-  List<CheckinHistoryItem> _filteredHistory() {
-    final source = widget.history;
-    if (_range == ReportRange.all) return source;
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSummary());
+  }
 
-    final nowUtc = DateTime.now().toUtc();
-    final days = switch (_range) {
+  int _currentRangeDays() {
+    return switch (_range) {
       ReportRange.days7 => 7,
       ReportRange.days14 => 14,
       ReportRange.days30 => 30,
-      ReportRange.all => 36500,
+      ReportRange.all => 365,
     };
+  }
 
-    return source.where((item) {
-      final ts = _parseCreatedAt(item.createdAt);
-      if (ts == null) return true;
-      final diff = nowUtc.difference(ts).inDays;
-      return diff <= days;
-    }).toList();
+  Future<void> _loadSummary() async {
+    setState(() {
+      _summaryLoading = true;
+      _summaryError = '';
+    });
+    try {
+      final summary = await ApiClient().fetchReportSummary(
+        days: _currentRangeDays(),
+        limit: 300,
+      );
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _summaryLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _summaryLoading = false;
+        _summaryError = 'Summary load failed: $e';
+      });
+    }
   }
 
   DateTime? _parseCreatedAt(String raw) {
@@ -1680,6 +636,19 @@ class _ReportScreenState extends State<ReportScreen> {
     final hh = parsed.hour.toString().padLeft(2, '0');
     final min = parsed.minute.toString().padLeft(2, '0');
     return '$yy-$mm-$dd $hh:$min';
+  }
+
+  List<CheckinHistoryItem> _filteredHistory() {
+    final source = widget.history;
+    if (_range == ReportRange.all) return source;
+
+    final nowUtc = DateTime.now().toUtc();
+    final days = _currentRangeDays();
+    return source.where((item) {
+      final ts = _parseCreatedAt(item.createdAt);
+      if (ts == null) return true;
+      return nowUtc.difference(ts).inDays <= days;
+    }).toList();
   }
 
   String _csvEscape(String value) {
@@ -1717,47 +686,33 @@ class _ReportScreenState extends State<ReportScreen> {
       await file.writeAsString(_buildCsv(rows), flush: true);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV ????꾨즺: ${file.path}')),
+        SnackBar(content: Text('CSV 저장 완료: ${file.path}')),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('CSV ????ㅽ뙣: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('CSV 저장 실패: $e')),
+      );
     }
   }
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
 
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
+  Future<void> _exportLocalPdf(BuildContext context, List<CheckinHistoryItem> rows) async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Web file save is not supported.')),
       );
       return;
     }
-
     try {
       final dir = await getApplicationDocumentsDirectory();
       final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
       final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
       final pdf = pw.Document();
-      final days = _currentRangeDays();
-
       pdf.addPage(
         pw.MultiPage(
           build: (ctx) => [
             pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
+            pw.Text('Range: last ${_currentRangeDays()} days'),
             pw.Text('Total rows: ${rows.length}'),
             pw.SizedBox(height: 8),
             pw.TableHelper.fromTextArray(
@@ -1778,7 +733,6 @@ class _ReportScreenState extends State<ReportScreen> {
           ],
         ),
       );
-
       await file.writeAsBytes(await pdf.save(), flush: true);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1786,9 +740,9 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Local PDF save failed: $e')),
+      );
     }
   }
 
@@ -1799,7 +753,6 @@ class _ReportScreenState extends State<ReportScreen> {
       );
       return;
     }
-
     try {
       final bytes = await ApiClient().fetchReportPdf(
         days: _currentRangeDays(),
@@ -1815,9 +768,9 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Server PDF save failed: $e')),
+      );
     }
   }
 
@@ -1826,25 +779,23 @@ class _ReportScreenState extends State<ReportScreen> {
     if (widget.loading && widget.history.isEmpty) {
       return const _CenteredState(
         icon: Icons.hourglass_top_rounded,
-        title: '由ы룷??遺덈윭?ㅻ뒗 以?,
-        subtitle: '泥댄겕??湲곕줉??媛?몄삤怨??덉뼱??',
+        title: '리포트 불러오는 중',
+        subtitle: '체크인 기록을 가져오고 있어요.',
       );
     }
-
     if (widget.history.isEmpty) {
       return const _CenteredState(
         icon: Icons.show_chart_outlined,
-        title: '二쇨컙 由ы룷??以鍮?以?,
-        subtitle: '泥댄겕???곗씠?곌? ?볦씠硫?由ы룷?멸? ?쒖떆?⑸땲??',
+        title: '주간 리포트 준비 중',
+        subtitle: '체크인 데이터가 쌓이면 리포트가 표시됩니다.',
       );
     }
 
     final filtered = _filteredHistory();
     final base = filtered.isNotEmpty ? filtered : widget.history;
-
-    final latest = base.first;
-    final score = latest.recoveryScore;
-    final risk = latest.riskScore;
+    final avgRecovery =
+        base.map((e) => e.recoveryScore).reduce((a, b) => a + b) / base.length;
+    final avgRisk = base.map((e) => e.riskScore).reduce((a, b) => a + b) / base.length;
     final chartPoints = base
         .take(7)
         .toList()
@@ -1852,37 +803,26 @@ class _ReportScreenState extends State<ReportScreen> {
         .map((item) => item.recoveryScore / 100)
         .toList();
 
-    final avgRecovery =
-        base.map((e) => e.recoveryScore).reduce((a, b) => a + b) / base.length;
-    final avgRisk =
-        base.map((e) => e.riskScore).reduce((a, b) => a + b) / base.length;
-
+    final confidenceBuckets = <String, int>{
+      '낮음 (0.0~0.39)': 0,
+      '중간 (0.40~0.69)': 0,
+      '높음 (0.70~1.00)': 0,
+    };
     final tagCount = <String, int>{};
     for (final item in base) {
+      if (item.confidence < 0.4) {
+        confidenceBuckets['낮음 (0.0~0.39)'] = confidenceBuckets['낮음 (0.0~0.39)']! + 1;
+      } else if (item.confidence < 0.7) {
+        confidenceBuckets['중간 (0.40~0.69)'] = confidenceBuckets['중간 (0.40~0.69)']! + 1;
+      } else {
+        confidenceBuckets['높음 (0.70~1.00)'] = confidenceBuckets['높음 (0.70~1.00)']! + 1;
+      }
       for (final tag in item.tags) {
         tagCount[tag] = (tagCount[tag] ?? 0) + 1;
       }
     }
     final sortedTags = tagCount.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
-    final confidenceBuckets = <String, int>{
-      '??쓬 (0.0~0.39)': 0,
-      '以묎컙 (0.40~0.69)': 0,
-      '?믪쓬 (0.70~1.00)': 0,
-    };
-    for (final item in base) {
-      if (item.confidence < 0.4) {
-        confidenceBuckets['??쓬 (0.0~0.39)'] =
-            confidenceBuckets['??쓬 (0.0~0.39)']! + 1;
-      } else if (item.confidence < 0.7) {
-        confidenceBuckets['以묎컙 (0.40~0.69)'] =
-            confidenceBuckets['以묎컙 (0.40~0.69)']! + 1;
-      } else {
-        confidenceBuckets['?믪쓬 (0.70~1.00)'] =
-            confidenceBuckets['?믪쓬 (0.70~1.00)']! + 1;
-      }
-    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -1893,82 +833,100 @@ class _ReportScreenState extends State<ReportScreen> {
             children: [
               const Expanded(
                 child: Text(
-                  '二쇨컙 由ы룷??,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
+                  '주간 리포트',
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
                 ),
               ),
               IconButton(
                 onPressed: () => unawaited(widget.onRefresh()),
                 icon: const Icon(Icons.refresh_rounded),
-                tooltip: '?덈줈怨좎묠',
               ),
             ],
           ),
-          const SizedBox(height: 6),
           if (widget.errorMessage.isNotEmpty)
             _InfoBanner(message: widget.errorMessage, tone: BannerTone.warning),
-          if (widget.errorMessage.isNotEmpty) const SizedBox(height: 10),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('7일'),
+                selected: _range == ReportRange.days7,
+                onSelected: (_) {
+                  setState(() => _range = ReportRange.days7);
+                  unawaited(_loadSummary());
+                },
+              ),
+              ChoiceChip(
+                label: const Text('14일'),
+                selected: _range == ReportRange.days14,
+                onSelected: (_) {
+                  setState(() => _range = ReportRange.days14);
+                  unawaited(_loadSummary());
+                },
+              ),
+              ChoiceChip(
+                label: const Text('30일'),
+                selected: _range == ReportRange.days30,
+                onSelected: (_) {
+                  setState(() => _range = ReportRange.days30);
+                  unawaited(_loadSummary());
+                },
+              ),
+              ChoiceChip(
+                label: const Text('전체'),
+                selected: _range == ReportRange.all,
+                onSelected: (_) {
+                  setState(() => _range = ReportRange.all);
+                  unawaited(_loadSummary());
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => unawaited(_exportCsv(context, base)),
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('CSV ?대낫?닿린'),
+                  icon: const Icon(Icons.description_outlined),
+                  label: const Text('CSV'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => unawaited(_exportLocalPdf(context, base)),
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('로컬 PDF'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => unawaited(_exportServerPdf(context)),
+                  icon: const Icon(Icons.cloud_download_outlined),
+                  label: const Text('서버 PDF'),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          _SurfaceCard(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('7??),
-                  selected: _range == ReportRange.days7,
-                  onSelected: (_) => setState(() => _range = ReportRange.days7),
-                ),
-                ChoiceChip(
-                  label: const Text('14??),
-                  selected: _range == ReportRange.days14,
-                  onSelected: (_) =>
-                      setState(() => _range = ReportRange.days14),
-                ),
-                ChoiceChip(
-                  label: const Text('30??),
-                  selected: _range == ReportRange.days30,
-                  onSelected: (_) =>
-                      setState(() => _range = ReportRange.days30),
-                ),
-                ChoiceChip(
-                  label: const Text('?꾩껜'),
-                  selected: _range == ReportRange.all,
-                  onSelected: (_) => setState(() => _range = ReportRange.all),
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: '理쒓렐 ?뚮났',
-                  value: '$score',
+                  title: '최근 회복',
+                  value: '${base.first.recoveryScore}',
                   accent: AppColors.primary,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  title: '理쒓렐 由ъ뒪??,
-                  value: '$risk',
+                  title: '최근 리스크',
+                  value: '${base.first.riskScore}',
                   accent: const Color(0xFFD97706),
                 ),
               ),
@@ -1979,7 +937,7 @@ class _ReportScreenState extends State<ReportScreen> {
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: '?됯퇏 ?뚮났',
+                  title: '평균 회복',
                   value: avgRecovery.toStringAsFixed(1),
                   accent: AppColors.primaryDark,
                 ),
@@ -1987,7 +945,7 @@ class _ReportScreenState extends State<ReportScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  title: '?됯퇏 由ъ뒪??,
+                  title: '평균 리스크',
                   value: avgRisk.toStringAsFixed(1),
                   accent: const Color(0xFFB45309),
                 ),
@@ -1999,11 +957,8 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '?뚮났 ?먯닔 異붿꽭 (理쒕? 7??',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
+                const Text('회복 점수 추세 (최대 7회)', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
                 SizedBox(
                   height: 120,
                   child: CustomPaint(
@@ -2019,11 +974,8 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Confidence 遺꾪룷',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
+                const Text('Confidence 분포', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
                 ...confidenceBuckets.entries.map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -2031,11 +983,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       label: entry.key,
                       count: entry.value,
                       total: base.length,
-                      color: entry.key.startsWith('??쓬')
-                          ? const Color(0xFFD97706)
-                          : entry.key.startsWith('以묎컙')
-                          ? const Color(0xFF2F6B5F)
-                          : const Color(0xFF0F766E),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -2047,30 +995,22 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '?쒓렇 遺꾪룷 (?곸쐞 6媛?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
+                const Text('태그 분포 (상위 6개)', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
                 if (sortedTags.isEmpty)
-                  const Text(
-                    '?꾩쭅 ?쒓렇 ?곗씠?곌? ?놁뒿?덈떎.',
-                    style: TextStyle(color: AppColors.muted),
-                  )
+                  const Text('아직 태그 데이터가 없습니다.', style: TextStyle(color: AppColors.muted))
                 else
-                  ...sortedTags
-                      .take(6)
-                      .map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _DistributionRow(
-                            label: entry.key,
-                            count: entry.value,
-                            total: base.length,
-                            color: AppColors.primary,
-                          ),
-                        ),
+                  ...sortedTags.take(6).map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _DistributionRow(
+                        label: entry.key,
+                        count: entry.value,
+                        total: base.length,
+                        color: AppColors.primaryDark,
                       ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -2079,64 +1019,38 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '理쒓렐 泥댄겕??,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-                ...base
-                    .take(5)
-                    .map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE2F1EC),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '${item.recoveryScore}',
-                                style: const TextStyle(
-                                  color: AppColors.primaryDark,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.explanation,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.text,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatCreatedAt(item.createdAt),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.muted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                const Text('최근 체크인', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ...base.take(5).map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE2F1EC),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('${item.recoveryScore}'),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.explanation, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              Text(_formatCreatedAt(item.createdAt),
+                                  style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -2158,100 +1072,6 @@ class _DistributionRow extends StatelessWidget {
   final int count;
   final int total;
   final Color color;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2261,32 +1081,12 @@ class _DistributionRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.text,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Text(
-              '$count嫄?(${(ratio * 100).toStringAsFixed(0)}%)',
-              style: const TextStyle(fontSize: 13, color: AppColors.muted),
-            ),
+            Expanded(child: Text(label)),
+            Text('$count건 (${(ratio * 100).toStringAsFixed(0)}%)'),
           ],
         ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 8,
-            color: color,
-            backgroundColor: const Color(0xFFE2E8F0),
-          ),
-        ),
+        const SizedBox(height: 4),
+        LinearProgressIndicator(value: ratio, color: color, minHeight: 8),
       ],
     );
   }
@@ -2302,132 +1102,47 @@ class _MetricCard extends StatelessWidget {
   final String title;
   final String value;
   final Color accent;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
+    return _SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 14, color: AppColors.muted),
-          ),
+          Text(title, style: const TextStyle(color: AppColors.muted)),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: accent,
-            ),
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: accent),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreBar extends StatelessWidget {
+  const _ScoreBar({required this.label, required this.value, required this.max});
+
+  final String label;
+  final double value;
+  final double max;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = (value / max).clamp(0, 1).toDouble();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(label)),
+              Text(value.toStringAsFixed(1)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(value: ratio, minHeight: 8, color: AppColors.primary),
         ],
       ),
     );
@@ -2444,19 +1159,16 @@ class _MiniChartPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = const Color(0xFFE2E8F0)
       ..strokeWidth = 1;
-
     for (var i = 1; i < 4; i++) {
       final y = size.height * (i / 4);
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    final safePoints = points.isEmpty ? [0.0] : points;
+    final safe = points.isEmpty ? [0.0] : points;
     final path = Path();
-    for (var i = 0; i < safePoints.length; i++) {
-      final x = safePoints.length == 1
-          ? size.width / 2
-          : (size.width / (safePoints.length - 1)) * i;
-      final y = size.height * (1 - safePoints[i].clamp(0, 1));
+    for (var i = 0; i < safe.length; i++) {
+      final x = safe.length == 1 ? size.width / 2 : (size.width / (safe.length - 1)) * i;
+      final y = size.height * (1 - safe[i].clamp(0, 1));
       if (i == 0) {
         path.moveTo(x, y);
       } else {
@@ -2464,13 +1176,12 @@ class _MiniChartPainter extends CustomPainter {
       }
     }
 
-    final linePaint = Paint()
+    final paint = Paint()
       ..color = AppColors.primary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-
-    canvas.drawPath(path, linePaint);
+    canvas.drawPath(path, paint);
   }
 
   @override
@@ -2483,115 +1194,17 @@ class _SurfaceCard extends StatelessWidget {
 
   final Widget child;
   final EdgeInsets margin;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: margin,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
+          BoxShadow(color: Color(0x12000000), blurRadius: 8, offset: Offset(0, 4)),
         ],
       ),
       child: child,
@@ -2600,109 +1213,11 @@ class _SurfaceCard extends StatelessWidget {
 }
 
 class _CenteredState extends StatelessWidget {
-  const _CenteredState({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  const _CenteredState({required this.icon, required this.title, required this.subtitle});
 
   final IconData icon;
   final String title;
   final String subtitle;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2714,17 +1229,9 @@ class _CenteredState extends StatelessWidget {
           children: [
             Icon(icon, size: 54, color: AppColors.muted),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-              textAlign: TextAlign.center,
-            ),
+            Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 16, color: AppColors.muted),
-              textAlign: TextAlign.center,
-            ),
+            Text(subtitle, style: const TextStyle(color: AppColors.muted), textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -2746,100 +1253,6 @@ class _CenteredActionState extends StatelessWidget {
   final String subtitle;
   final String actionLabel;
   final VoidCallback onPressed;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2849,19 +1262,12 @@ class _CenteredActionState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 54, color: const Color(0xFFB45309)),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-            ),
+            Icon(icon, size: 54),
+            const SizedBox(height: 10),
+            Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 16, color: AppColors.muted),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
+            Text(subtitle, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
             FilledButton(onPressed: onPressed, child: Text(actionLabel)),
           ],
         ),
@@ -2877,100 +1283,6 @@ class _InfoBanner extends StatelessWidget {
 
   final String message;
   final BannerTone tone;
-  int _currentRangeDays() {
-    return switch (_range) {
-      ReportRange.days7 => 7,
-      ReportRange.days14 => 14,
-      ReportRange.days30 => 30,
-      ReportRange.all => 365,
-    };
-  }
-
-  Future<void> _exportLocalPdf(
-    BuildContext context,
-    List<CheckinHistoryItem> rows,
-  ) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_local_$timestamp.pdf');
-      final pdf = pw.Document();
-      final days = _currentRangeDays();
-
-      pdf.addPage(
-        pw.MultiPage(
-          build: (ctx) => [
-            pw.Header(level: 0, child: pw.Text('Sumpyo Local Report')),
-            pw.Text('Range: last $days days'),
-            pw.Text('Total rows: ${rows.length}'),
-            pw.SizedBox(height: 8),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Created', 'Recovery', 'Risk', 'Confidence', 'Tags'],
-              data: rows
-                  .take(20)
-                  .map(
-                    (r) => [
-                      r.createdAt,
-                      r.recoveryScore.toString(),
-                      r.riskScore.toString(),
-                      r.confidence.toStringAsFixed(2),
-                      r.tags.join('|'),
-                    ],
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      );
-
-      await file.writeAsBytes(await pdf.save(), flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Local PDF save failed: $e')));
-    }
-  }
-
-  Future<void> _exportServerPdf(BuildContext context) async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Web file save is not supported.')),
-      );
-      return;
-    }
-
-    try {
-      final bytes = await ApiClient().fetchReportPdf(
-        days: _currentRangeDays(),
-        limit: 300,
-      );
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final file = File('${dir.path}/sumpyo_report_server_$timestamp.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Server PDF saved: ${file.path}')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Server PDF save failed: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2984,10 +1296,7 @@ class _InfoBanner extends StatelessWidget {
           color: isError ? AppColors.errorBorder : AppColors.warningBorder,
         ),
       ),
-      child: Text(
-        message,
-        style: const TextStyle(fontSize: 15, color: AppColors.text),
-      ),
+      child: Text(message),
     );
   }
 }
@@ -3042,21 +1351,14 @@ class AnalyzeResponse {
       holdDecision: json['hold_decision'] as bool,
       explanation: json['explanation'] as String,
       tags: (json['tags'] as List<dynamic>).cast<String>(),
-      recommendedRoutines: (json['recommended_routines'] as List<dynamic>)
-          .cast<String>(),
-      componentScores: ComponentScores.fromJson(
-        json['component_scores'] as Map<String, dynamic>,
-      ),
+      recommendedRoutines: (json['recommended_routines'] as List<dynamic>).cast<String>(),
+      componentScores: ComponentScores.fromJson(json['component_scores'] as Map<String, dynamic>),
     );
   }
 }
 
 class STTResponse {
-  STTResponse({
-    required this.transcript,
-    required this.language,
-    required this.provider,
-  });
+  STTResponse({required this.transcript, required this.language, required this.provider});
 
   final String transcript;
   final String language;
@@ -3143,7 +1445,6 @@ class ApiClient {
       final req = await client.postUrl(uri);
       req.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
       req.add(utf8.encode(jsonEncode(request.toJson())));
-
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -3169,12 +1470,31 @@ class ApiClient {
         final msg = _extractError(body) ?? 'HTTP ${res.statusCode}';
         throw Exception(msg);
       }
-
       final parsed = jsonDecode(body) as Map<String, dynamic>;
       final items = (parsed['items'] as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();
       return items.map(CheckinHistoryItem.fromJson).toList();
+    } on SocketException {
+      throw Exception('Cannot reach API server. Start backend at port 8000.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<List<int>> fetchReportPdf({required int days, int limit = 200}) async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('$_baseUrl/report/export-pdf?days=$days&limit=$limit');
+      final req = await client.getUrl(uri);
+      final res = await req.close();
+      final bytes = await consolidateHttpClientResponseBytes(res);
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        final text = utf8.decode(bytes, allowMalformed: true);
+        final msg = _extractError(text) ?? 'HTTP ${res.statusCode}';
+        throw Exception(msg);
+      }
+      return bytes;
     } on SocketException {
       throw Exception('Cannot reach API server. Start backend at port 8000.');
     } finally {
@@ -3192,33 +1512,23 @@ class ApiClient {
     Object? lastError;
     for (var attempt = 0; attempt <= retryCount; attempt++) {
       try {
-        final uri = Uri.parse(
-          '$_baseUrl/stt?language=$language&profile=$profile',
-        );
+        final uri = Uri.parse('$_baseUrl/stt?language=$language&profile=$profile');
         final req = http.MultipartRequest('POST', uri);
         req.files.add(await http.MultipartFile.fromPath('file', filePath));
-
-        final streamed = await req.send().timeout(
-          Duration(seconds: timeoutSec),
-        );
+        final streamed = await req.send().timeout(Duration(seconds: timeoutSec));
         final body = await streamed.stream.bytesToString();
-
         if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
           final msg = _extractError(body) ?? 'HTTP ${streamed.statusCode}';
           throw Exception(msg);
         }
-
         return STTResponse.fromJson(jsonDecode(body) as Map<String, dynamic>);
       } on TimeoutException {
         lastError = Exception('STT request timeout');
       } on SocketException {
-        lastError = Exception(
-          'Cannot reach API server. Start backend at port 8000.',
-        );
+        lastError = Exception('Cannot reach API server. Start backend at port 8000.');
       } catch (e) {
         lastError = e;
       }
-
       if (attempt < retryCount) {
         await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
       }
@@ -3246,4 +1556,3 @@ class ApiClient {
     return null;
   }
 }
-

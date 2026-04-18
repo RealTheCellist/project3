@@ -17,6 +17,7 @@ uvicorn app.main:app --reload
 - 분석 API: `POST http://127.0.0.1:8000/analyze-checkin`
 - 히스토리 API: `GET http://127.0.0.1:8000/checkins?limit=20`
 - 리포트 요약 API: `GET http://127.0.0.1:8000/report/summary?days=7&limit=200`
+- 리포트 PDF API: `GET http://127.0.0.1:8000/report/export-pdf?days=7&limit=200`
 - STT API: `POST http://127.0.0.1:8000/stt` (multipart file, `profile=fast|balanced|accurate`)
 - STT Config: `GET http://127.0.0.1:8000/stt/config?profile=balanced`
 - STT Profiles: `GET http://127.0.0.1:8000/stt/profiles`
@@ -62,7 +63,9 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 
 앱에서 `Home > Analyze now`를 누르면 백엔드 `POST /analyze-checkin`을 호출합니다.
 `Home > Start voice input`으로 음성 인식(STT) 텍스트 입력이 가능합니다.
-`Report > CSV 내보내기`로 필터된 리포트 데이터를 CSV 파일로 저장할 수 있습니다.
+`Report > CSV`로 필터된 리포트 데이터를 CSV 파일로 저장할 수 있습니다.
+`Report > 로컬 PDF`는 앱에서 PDF를 생성해 저장합니다.
+`Report > 서버 PDF`는 FastAPI에서 PDF를 생성해 내려받아 저장합니다.
 
 ## 백엔드 테스트
 

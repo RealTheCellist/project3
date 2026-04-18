@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Sumpyo",
+    "slug": "sumpyo-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F4EE"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F7F4EE"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

@@ -73,6 +73,18 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 릴리즈 체크리스트: `RELEASE_CHECKLIST.md`
 - 베타 테스트 시나리오: `BETA_TEST_SCENARIOS.md`
 - STT E2E 체크리스트: `STT_E2E_QA_CHECKLIST.md`
+- 베타 실행 로그 템플릿: `BETA_RUN_LOG_TEMPLATE.csv`
+- 일일 리포트 템플릿: `DAILY_BETA_REPORT_TEMPLATE.md`
+- 일일 리포트 예시: `DAILY_BETA_REPORT_2026-04-19.md`
+- 장애 공지 템플릿: `INCIDENT_MESSAGE_TEMPLATE.md`
+
+베타 KPI 집계 예시:
+
+```powershell
+python scripts/beta_kpi_summary.py ^
+  --input BETA_RUN_LOG_TEMPLATE.csv ^
+  --output data/beta_kpi_summary.json
+```
 
 ## 백엔드 테스트
 

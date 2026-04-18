@@ -1,0 +1,5 @@
+timestamp,tester,device,scenario,step,analyze_ok,stt_ok,fallback_used,latency_ms,outcome,note
+2026-04-19T10:00:00+09:00,tester_a,Android Pixel 7,Scenario1,manual_text,true,,false,920,pass,manual analyze success
+2026-04-19T10:05:00+09:00,tester_a,Android Pixel 7,Scenario1,stt_record,true,true,false,2100,pass,server stt success
+2026-04-19T10:10:00+09:00,tester_b,iPhone 14,Scenario2,stt_fallback,true,false,true,3800,pass,fallback activated
+

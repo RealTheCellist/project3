@@ -83,6 +83,7 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 롤백 계획: `ROLLBACK_PLAN.md`
 - STT 튜닝 계획: `STT_TUNING_PLAN.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
+- 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 
 베타 KPI 집계 예시:
 
@@ -95,6 +96,14 @@ python scripts/beta_kpi_summary.py ^
 실행 로그(24건)와 집계 산출물:
 - `data/beta_run_log_2026-04-19.csv`
 - `data/beta_kpi_summary_2026-04-19.json`
+
+모바일 런타임 감사 리포트 생성:
+
+```powershell
+python scripts/mobile_runtime_audit.py ^
+  --input data/beta_run_log_2026-04-19.csv ^
+  --output data/mobile_runtime_audit_2026-04-19.md
+```
 
 ## 백엔드 테스트
 

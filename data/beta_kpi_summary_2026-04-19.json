@@ -1,9 +1,9 @@
 {
-  "total_runs": 24,
-  "analyze_success_rate": 91.67,
-  "stt_success_rate": 33.33,
-  "stt_fallback_rate": 20.83,
-  "avg_latency_ms": 3655.83,
+  "total_runs": 25,
+  "analyze_success_rate": 92.0,
+  "stt_success_rate": 32.0,
+  "stt_fallback_rate": 20.0,
+  "avg_latency_ms": 3548.8,
   "p95_latency_ms": 3800.0,
   "by_scenario": {
     "Scenario1": {
@@ -31,8 +31,8 @@
       "fallback_used": 2
     },
     "Scenario5": {
-      "total": 2,
-      "analyze_success": 2,
+      "total": 3,
+      "analyze_success": 3,
       "stt_success": 0,
       "fallback_used": 0
     },

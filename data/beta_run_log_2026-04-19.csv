@@ -23,3 +23,4 @@ timestamp,tester,device,scenario,step,analyze_ok,stt_ok,fallback_used,latency_ms
 2026-04-19T11:20:00+09:00,tester_n,Pixel 5,Scenario5,drilldown_state,true,,false,760,pass,restored
 2026-04-19T11:24:00+09:00,tester_o,Galaxy S22,Scenario2,stt_fallback,true,false,true,3400,pass,fallback
 2026-04-19T11:28:00+09:00,tester_p,iPhone 14,Scenario1,stt_record,true,true,false,2250,pass,balanced
+2026-04-19T12:10:00+09:00,tester_q,Pixel 7,Scenario5,report_compare,true,,false,980,pass,report compare card verified

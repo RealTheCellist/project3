@@ -1994,14 +1994,14 @@ class ApiClient {
     String profile = 'balanced',
   }) async {
     Object? lastError;
-    for (var attempt = 0; attempt < 2; attempt++) {
+    for (var attempt = 0; attempt < 3; attempt++) {
       try {
         final uri = Uri.parse(
           '$_baseUrl/stt?language=$language&profile=$profile',
         );
         final req = http.MultipartRequest('POST', uri);
         req.files.add(await http.MultipartFile.fromPath('file', filePath));
-        final res = await req.send().timeout(const Duration(seconds: 45));
+        final res = await req.send().timeout(const Duration(seconds: 60));
         final body = await res.stream.bytesToString();
         if (res.statusCode < 200 || res.statusCode >= 300) {
           throw Exception(_extractError(body) ?? 'HTTP ${res.statusCode}');
@@ -2013,10 +2013,11 @@ class ApiClient {
             e is TimeoutException ||
             e is SocketException ||
             e.toString().contains('HTTP 5');
-        if (!retryable || attempt == 1) {
+        if (!retryable || attempt == 2) {
           rethrow;
         }
-        await Future<void>.delayed(const Duration(milliseconds: 300));
+        final backoffMs = 400 * (attempt + 1);
+        await Future<void>.delayed(Duration(milliseconds: backoffMs));
       }
     }
     throw Exception(lastError ?? 'STT failed');

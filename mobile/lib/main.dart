@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -65,7 +65,7 @@ class _RootScreenState extends State<RootScreen> {
   List<CheckinHistoryItem> _history = const [];
 
   final TextEditingController _controller = TextEditingController(
-    text: '오늘은 조금 불안하고 피곤해요.',
+    text: '?ㅻ뒛? 議곌툑 遺덉븞?섍퀬 ?쇨낀?댁슂.',
   );
   final SpeechToText _speech = SpeechToText();
   final AudioRecorder _recorder = AudioRecorder();
@@ -220,7 +220,7 @@ class _RootScreenState extends State<RootScreen> {
   Future<void> analyze() async {
     final transcript = _controller.text.trim();
     if (transcript.isEmpty) {
-      _setError('분석할 텍스트를 입력하세요.');
+      _setError('遺꾩꽍???띿뒪?몃? ?낅젰?섏꽭??');
       return;
     }
 
@@ -362,11 +362,11 @@ class HomeScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            '숨표 체크인',
+            '?⑦몴 泥댄겕??,
             style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          Text('최근 회복 점수: ${latestScore ?? '--'}', style: const TextStyle(color: AppColors.muted)),
+          Text('理쒓렐 ?뚮났 ?먯닔: ${latestScore ?? '--'}', style: const TextStyle(color: AppColors.muted)),
           const SizedBox(height: 12),
           if (status == AnalyzeStatus.error && errorMessage.isNotEmpty)
             _InfoBanner(message: errorMessage, tone: BannerTone.error),
@@ -379,7 +379,7 @@ class HomeScreen extends StatelessWidget {
                   minLines: 5,
                   maxLines: 8,
                   decoration: const InputDecoration(
-                    hintText: 'STT 결과가 여기에 입력됩니다.',
+                    hintText: 'STT 寃곌낵媛 ?ш린???낅젰?⑸땲??',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -408,7 +408,7 @@ class HomeScreen extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onToggleRecording,
                         icon: Icon(recording ? Icons.stop : Icons.fiber_manual_record),
-                        label: Text(recording ? '녹음 중지 & STT' : '녹음 시작 (서버 STT)'),
+                        label: Text(recording ? '?뱀쓬 以묒? & STT' : '?뱀쓬 ?쒖옉 (?쒕쾭 STT)'),
                       ),
                     ),
                   ],
@@ -420,7 +420,7 @@ class HomeScreen extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onToggleListening,
                         icon: Icon(listening ? Icons.mic_off : Icons.mic),
-                        label: Text(listening ? '음성 입력 중지' : '음성 입력 시작'),
+                        label: Text(listening ? '?뚯꽦 ?낅젰 以묒?' : '?뚯꽦 ?낅젰 ?쒖옉'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -433,7 +433,7 @@ class HomeScreen extends StatelessWidget {
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text('지금 분석'),
+                            : const Text('吏湲?遺꾩꽍'),
                       ),
                     ),
                   ],
@@ -468,17 +468,17 @@ class ResultScreen extends StatelessWidget {
     if (status == AnalyzeStatus.loading) {
       return const _CenteredState(
         icon: Icons.hourglass_top,
-        title: '분석 중입니다',
-        subtitle: '잠시만 기다려주세요.',
+        title: '遺꾩꽍 以묒엯?덈떎',
+        subtitle: '?좎떆留?湲곕떎?ㅼ＜?몄슂.',
       );
     }
 
     if (status == AnalyzeStatus.error && result == null) {
       return _CenteredActionState(
         icon: Icons.error_outline,
-        title: '분석 실패',
+        title: '遺꾩꽍 ?ㅽ뙣',
         subtitle: errorMessage,
-        actionLabel: '다시 시도',
+        actionLabel: '?ㅼ떆 ?쒕룄',
         onPressed: onRetry,
       );
     }
@@ -486,8 +486,8 @@ class ResultScreen extends StatelessWidget {
     if (result == null) {
       return const _CenteredState(
         icon: Icons.insights_outlined,
-        title: '결과가 아직 없어요',
-        subtitle: '홈에서 체크인을 분석해보세요.',
+        title: '寃곌낵媛 ?꾩쭅 ?놁뼱??,
+        subtitle: '?덉뿉??泥댄겕?몄쓣 遺꾩꽍?대낫?몄슂.',
       );
     }
 
@@ -500,7 +500,7 @@ class ResultScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('회복 점수: ${result!.recoveryScore}',
+                Text('?뚮났 ?먯닔: ${result!.recoveryScore}',
                     style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 Text(result!.explanation, style: const TextStyle(color: AppColors.muted)),
@@ -519,7 +519,7 @@ class ResultScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onStartRoutine, child: const Text('루틴 시작')),
+          FilledButton(onPressed: onStartRoutine, child: const Text('猷⑦떞 ?쒖옉')),
         ],
       ),
     );
@@ -536,15 +536,15 @@ class RoutineScreen extends StatelessWidget {
     if (result == null) {
       return const _CenteredState(
         icon: Icons.self_improvement_outlined,
-        title: '루틴이 아직 없어요',
-        subtitle: '분석 후 추천 루틴이 표시됩니다.',
+        title: '猷⑦떞???꾩쭅 ?놁뼱??,
+        subtitle: '遺꾩꽍 ??異붿쿇 猷⑦떞???쒖떆?⑸땲??',
       );
     }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
-        const Text('추천 루틴', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+        const Text('異붿쿇 猷⑦떞', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
         ...result!.recommendedRoutines.map(
           (e) => _SurfaceCard(
@@ -686,12 +686,12 @@ class _ReportScreenState extends State<ReportScreen> {
       await file.writeAsString(_buildCsv(rows), flush: true);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV 저장 완료: ${file.path}')),
+        SnackBar(content: Text('CSV ????꾨즺: ${file.path}')),
       );
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV 저장 실패: $e')),
+        SnackBar(content: Text('CSV ????ㅽ뙣: $e')),
       );
     }
   }
@@ -779,50 +779,74 @@ class _ReportScreenState extends State<ReportScreen> {
     if (widget.loading && widget.history.isEmpty) {
       return const _CenteredState(
         icon: Icons.hourglass_top_rounded,
-        title: '리포트 불러오는 중',
-        subtitle: '체크인 기록을 가져오고 있어요.',
+        title: '由ы룷??遺덈윭?ㅻ뒗 以?,
+        subtitle: '泥댄겕??湲곕줉??媛?몄삤怨??덉뼱??',
       );
     }
     if (widget.history.isEmpty) {
       return const _CenteredState(
         icon: Icons.show_chart_outlined,
-        title: '주간 리포트 준비 중',
-        subtitle: '체크인 데이터가 쌓이면 리포트가 표시됩니다.',
+        title: '二쇨컙 由ы룷??以鍮?以?,
+        subtitle: '泥댄겕???곗씠?곌? ?볦씠硫?由ы룷?멸? ?쒖떆?⑸땲??',
       );
     }
 
     final filtered = _filteredHistory();
     final base = filtered.isNotEmpty ? filtered : widget.history;
-    final avgRecovery =
+    final localAvgRecovery =
         base.map((e) => e.recoveryScore).reduce((a, b) => a + b) / base.length;
-    final avgRisk = base.map((e) => e.riskScore).reduce((a, b) => a + b) / base.length;
-    final chartPoints = base
+    final localAvgRisk =
+        base.map((e) => e.riskScore).reduce((a, b) => a + b) / base.length;
+    final localChartPoints = base
         .take(7)
         .toList()
         .reversed
         .map((item) => item.recoveryScore / 100)
         .toList();
 
+    final server = _summary;
+    final avgRecovery = server?.avgRecoveryScore ?? localAvgRecovery;
+    final avgRisk = server?.avgRiskScore ?? localAvgRisk;
+    final chartPoints = (server != null && server.dailyRecovery.isNotEmpty)
+        ? server.dailyRecovery
+            .take(7)
+            .toList()
+            .map((e) => e.avgRecoveryScore / 100)
+            .toList()
+        : localChartPoints;
+
     final confidenceBuckets = <String, int>{
-      '낮음 (0.0~0.39)': 0,
-      '중간 (0.40~0.69)': 0,
-      '높음 (0.70~1.00)': 0,
+      '낮음 (0.0~0.39)': server?.confidenceBuckets.low ?? 0,
+      '중간 (0.40~0.69)': server?.confidenceBuckets.medium ?? 0,
+      '높음 (0.70~1.00)': server?.confidenceBuckets.high ?? 0,
     };
-    final tagCount = <String, int>{};
-    for (final item in base) {
-      if (item.confidence < 0.4) {
-        confidenceBuckets['낮음 (0.0~0.39)'] = confidenceBuckets['낮음 (0.0~0.39)']! + 1;
-      } else if (item.confidence < 0.7) {
-        confidenceBuckets['중간 (0.40~0.69)'] = confidenceBuckets['중간 (0.40~0.69)']! + 1;
-      } else {
-        confidenceBuckets['높음 (0.70~1.00)'] = confidenceBuckets['높음 (0.70~1.00)']! + 1;
+
+    final sortedTags = <MapEntry<String, int>>[];
+    if (server != null) {
+      sortedTags.addAll(
+        server.topTags.map((e) => MapEntry<String, int>(e.tag, e.count)),
+      );
+    } else {
+      final tagCount = <String, int>{};
+      for (final item in base) {
+        if (item.confidence < 0.4) {
+          confidenceBuckets['낮음 (0.0~0.39)'] =
+              confidenceBuckets['낮음 (0.0~0.39)']! + 1;
+        } else if (item.confidence < 0.7) {
+          confidenceBuckets['중간 (0.40~0.69)'] =
+              confidenceBuckets['중간 (0.40~0.69)']! + 1;
+        } else {
+          confidenceBuckets['높음 (0.70~1.00)'] =
+              confidenceBuckets['높음 (0.70~1.00)']! + 1;
+        }
+        for (final tag in item.tags) {
+          tagCount[tag] = (tagCount[tag] ?? 0) + 1;
+        }
       }
-      for (final tag in item.tags) {
-        tagCount[tag] = (tagCount[tag] ?? 0) + 1;
-      }
+      sortedTags
+        ..addAll(tagCount.entries)
+        ..sort((a, b) => b.value.compareTo(a.value));
     }
-    final sortedTags = tagCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -833,25 +857,35 @@ class _ReportScreenState extends State<ReportScreen> {
             children: [
               const Expanded(
                 child: Text(
-                  '주간 리포트',
+                  '二쇨컙 由ы룷??,
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
                 ),
               ),
               IconButton(
-                onPressed: () => unawaited(widget.onRefresh()),
+                onPressed: () {
+                  unawaited(widget.onRefresh());
+                  unawaited(_loadSummary());
+                },
                 icon: const Icon(Icons.refresh_rounded),
               ),
             ],
           ),
           if (widget.errorMessage.isNotEmpty)
             _InfoBanner(message: widget.errorMessage, tone: BannerTone.warning),
+          if (_summaryLoading)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('요약 데이터 동기화 중...'),
+            ),
+          if (_summaryError.isNotEmpty)
+            _InfoBanner(message: _summaryError, tone: BannerTone.warning),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               ChoiceChip(
-                label: const Text('7일'),
+                label: const Text('7??),
                 selected: _range == ReportRange.days7,
                 onSelected: (_) {
                   setState(() => _range = ReportRange.days7);
@@ -859,7 +893,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 },
               ),
               ChoiceChip(
-                label: const Text('14일'),
+                label: const Text('14??),
                 selected: _range == ReportRange.days14,
                 onSelected: (_) {
                   setState(() => _range = ReportRange.days14);
@@ -867,7 +901,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 },
               ),
               ChoiceChip(
-                label: const Text('30일'),
+                label: const Text('30??),
                 selected: _range == ReportRange.days30,
                 onSelected: (_) {
                   setState(() => _range = ReportRange.days30);
@@ -875,7 +909,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 },
               ),
               ChoiceChip(
-                label: const Text('전체'),
+                label: const Text('?꾩껜'),
                 selected: _range == ReportRange.all,
                 onSelected: (_) {
                   setState(() => _range = ReportRange.all);
@@ -899,7 +933,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => unawaited(_exportLocalPdf(context, base)),
                   icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('로컬 PDF'),
+                  label: const Text('濡쒖뺄 PDF'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -907,7 +941,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => unawaited(_exportServerPdf(context)),
                   icon: const Icon(Icons.cloud_download_outlined),
-                  label: const Text('서버 PDF'),
+                  label: const Text('?쒕쾭 PDF'),
                 ),
               ),
             ],
@@ -917,7 +951,7 @@ class _ReportScreenState extends State<ReportScreen> {
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: '최근 회복',
+                  title: '理쒓렐 ?뚮났',
                   value: '${base.first.recoveryScore}',
                   accent: AppColors.primary,
                 ),
@@ -925,7 +959,7 @@ class _ReportScreenState extends State<ReportScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  title: '최근 리스크',
+                  title: '理쒓렐 由ъ뒪??,
                   value: '${base.first.riskScore}',
                   accent: const Color(0xFFD97706),
                 ),
@@ -937,7 +971,7 @@ class _ReportScreenState extends State<ReportScreen> {
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: '평균 회복',
+                  title: '?됯퇏 ?뚮났',
                   value: avgRecovery.toStringAsFixed(1),
                   accent: AppColors.primaryDark,
                 ),
@@ -945,7 +979,7 @@ class _ReportScreenState extends State<ReportScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  title: '평균 리스크',
+                  title: '?됯퇏 由ъ뒪??,
                   value: avgRisk.toStringAsFixed(1),
                   accent: const Color(0xFFB45309),
                 ),
@@ -957,7 +991,7 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('회복 점수 추세 (최대 7회)', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text('?뚮났 ?먯닔 異붿꽭 (理쒕? 7??', style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 120,
@@ -974,7 +1008,7 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Confidence 분포', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text('Confidence 遺꾪룷', style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 ...confidenceBuckets.entries.map(
                   (entry) => Padding(
@@ -995,10 +1029,10 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('태그 분포 (상위 6개)', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text('?쒓렇 遺꾪룷 (?곸쐞 6媛?', style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 if (sortedTags.isEmpty)
-                  const Text('아직 태그 데이터가 없습니다.', style: TextStyle(color: AppColors.muted))
+                  const Text('?꾩쭅 ?쒓렇 ?곗씠?곌? ?놁뒿?덈떎.', style: TextStyle(color: AppColors.muted))
                 else
                   ...sortedTags.take(6).map(
                     (entry) => Padding(
@@ -1019,7 +1053,7 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('최근 체크인', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text('理쒓렐 泥댄겕??, style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 ...base.take(5).map(
                   (item) => Padding(
@@ -1082,7 +1116,7 @@ class _DistributionRow extends StatelessWidget {
         Row(
           children: [
             Expanded(child: Text(label)),
-            Text('$count건 (${(ratio * 100).toStringAsFixed(0)}%)'),
+            Text('$count嫄?(${(ratio * 100).toStringAsFixed(0)}%)'),
           ],
         ),
         const SizedBox(height: 4),
@@ -1431,6 +1465,107 @@ class CheckinHistoryItem {
   }
 }
 
+class ReportTagStat {
+  ReportTagStat({required this.tag, required this.count});
+
+  final String tag;
+  final int count;
+
+  factory ReportTagStat.fromJson(Map<String, dynamic> json) {
+    return ReportTagStat(
+      tag: json['tag'] as String,
+      count: json['count'] as int,
+    );
+  }
+}
+
+class ReportConfidenceBuckets {
+  ReportConfidenceBuckets({
+    required this.low,
+    required this.medium,
+    required this.high,
+  });
+
+  final int low;
+  final int medium;
+  final int high;
+
+  factory ReportConfidenceBuckets.fromJson(Map<String, dynamic> json) {
+    return ReportConfidenceBuckets(
+      low: json['low'] as int,
+      medium: json['medium'] as int,
+      high: json['high'] as int,
+    );
+  }
+}
+
+class DailyRecoveryPoint {
+  DailyRecoveryPoint({
+    required this.date,
+    required this.avgRecoveryScore,
+    required this.count,
+  });
+
+  final String date;
+  final double avgRecoveryScore;
+  final int count;
+
+  factory DailyRecoveryPoint.fromJson(Map<String, dynamic> json) {
+    return DailyRecoveryPoint(
+      date: json['date'] as String,
+      avgRecoveryScore: (json['avg_recovery_score'] as num).toDouble(),
+      count: json['count'] as int,
+    );
+  }
+}
+
+class ReportSummaryResponse {
+  ReportSummaryResponse({
+    required this.days,
+    required this.totalCheckins,
+    required this.avgRecoveryScore,
+    required this.avgRiskScore,
+    required this.avgConfidence,
+    required this.latestRecoveryScore,
+    required this.latestRiskScore,
+    required this.confidenceBuckets,
+    required this.topTags,
+    required this.dailyRecovery,
+  });
+
+  final int days;
+  final int totalCheckins;
+  final double avgRecoveryScore;
+  final double avgRiskScore;
+  final double avgConfidence;
+  final int? latestRecoveryScore;
+  final int? latestRiskScore;
+  final ReportConfidenceBuckets confidenceBuckets;
+  final List<ReportTagStat> topTags;
+  final List<DailyRecoveryPoint> dailyRecovery;
+
+  factory ReportSummaryResponse.fromJson(Map<String, dynamic> json) {
+    return ReportSummaryResponse(
+      days: json['days'] as int,
+      totalCheckins: json['total_checkins'] as int,
+      avgRecoveryScore: (json['avg_recovery_score'] as num).toDouble(),
+      avgRiskScore: (json['avg_risk_score'] as num).toDouble(),
+      avgConfidence: (json['avg_confidence'] as num).toDouble(),
+      latestRecoveryScore: json['latest_recovery_score'] as int?,
+      latestRiskScore: json['latest_risk_score'] as int?,
+      confidenceBuckets: ReportConfidenceBuckets.fromJson(
+        json['confidence_buckets'] as Map<String, dynamic>,
+      ),
+      topTags: (json['top_tags'] as List<dynamic>)
+          .map((e) => ReportTagStat.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      dailyRecovery: (json['daily_recovery'] as List<dynamic>)
+          .map((e) => DailyRecoveryPoint.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 class ApiClient {
   String get _baseUrl {
     if (kIsWeb) return 'http://localhost:8000';
@@ -1475,6 +1610,30 @@ class ApiClient {
           .map((e) => e as Map<String, dynamic>)
           .toList();
       return items.map(CheckinHistoryItem.fromJson).toList();
+    } on SocketException {
+      throw Exception('Cannot reach API server. Start backend at port 8000.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<ReportSummaryResponse> fetchReportSummary({
+    required int days,
+    int limit = 200,
+  }) async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('$_baseUrl/report/summary?days=$days&limit=$limit');
+      final req = await client.getUrl(uri);
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        final msg = _extractError(body) ?? 'HTTP ${res.statusCode}';
+        throw Exception(msg);
+      }
+      return ReportSummaryResponse.fromJson(
+        jsonDecode(body) as Map<String, dynamic>,
+      );
     } on SocketException {
       throw Exception('Cannot reach API server. Start backend at port 8000.');
     } finally {
@@ -1556,3 +1715,4 @@ class ApiClient {
     return null;
   }
 }
+

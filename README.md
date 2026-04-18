@@ -77,6 +77,12 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 일일 리포트 템플릿: `DAILY_BETA_REPORT_TEMPLATE.md`
 - 일일 리포트 예시: `DAILY_BETA_REPORT_2026-04-19.md`
 - 장애 공지 템플릿: `INCIDENT_MESSAGE_TEMPLATE.md`
+- 지원 채널 런북: `SUPPORT_CHANNEL_RUNBOOK.md`
+- 데이터 보존/삭제 정책: `DATA_RETENTION_POLICY.md`
+- Go/No-Go 기록: `GO_NO_GO_2026-04-19.md`
+- 롤백 계획: `ROLLBACK_PLAN.md`
+- STT 튜닝 계획: `STT_TUNING_PLAN.md`
+- 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
 
 베타 KPI 집계 예시:
 
@@ -85,6 +91,10 @@ python scripts/beta_kpi_summary.py ^
   --input BETA_RUN_LOG_TEMPLATE.csv ^
   --output data/beta_kpi_summary.json
 ```
+
+실행 로그(24건)와 집계 산출물:
+- `data/beta_run_log_2026-04-19.csv`
+- `data/beta_kpi_summary_2026-04-19.json`
 
 ## 백엔드 테스트
 

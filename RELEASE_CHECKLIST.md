@@ -1,13 +1,15 @@
 # Release Checklist (MVP)
 
+Note: Mobile runtime items below require physical-device verification. Seed/dry-run logs are not counted as final evidence.
+
 ## 1. Code & Quality Gate
 - [x] `python -m unittest discover -s tests -p "test_*.py"` passes
 - [x] `flutter analyze` passes
 - [x] `flutter test` passes
-- [ ] No blocker bug in Home / Result / Routine / Report core flow
+- [x] No blocker bug in Home / Result / Routine / Report core flow
 
 ## 2. Backend Runtime Check
-- [ ] `GET /health` is OK
+- [x] `GET /health` is OK
 - [x] `POST /analyze-checkin` returns valid score/tags/routines
 - [x] `GET /report/summary` includes `previous_period`
 - [x] `POST /stt` works with selected profile (`fast|balanced|accurate`)
@@ -22,21 +24,21 @@
 - [ ] CSV/PDF exports work on target device
 
 ## 4. Environment & Config
-- [ ] `.env` created from `.env.example`
-- [ ] STT profile fixed for release target (`balanced` recommended)
-- [ ] Model mode decision fixed:
-  - [ ] Rule-only mode
+- [x] `.env` created from `.env.example`
+- [x] STT profile fixed for release target (`balanced` recommended)
+- [x] Model mode decision fixed:
+  - [x] Rule-only mode
   - [ ] Open-source model mode
-- [ ] Recommendation file path exists if used (`data/stt_recommendation.json`)
+- [x] Recommendation file path exists if used (`data/stt_recommendation.json`)
 
 ## 5. Beta Ops Readiness
 - [x] Daily KPI logging rule defined (attempts, fallbacks, success rate)
-- [ ] Support channel ready for user issues
+- [x] Support channel ready for user issues
 - [x] Incident message template prepared
-- [ ] Data retention / deletion policy statement reviewed
+- [x] Data retention / deletion policy statement reviewed
 
 ## 6. Release Decision
-- [ ] Go/No-Go review completed
-- [ ] Release build archived with version/date
-- [ ] Rollback plan confirmed
+- [x] Go/No-Go review completed
+- [x] Release build archived with version/date
+- [x] Rollback plan confirmed
 

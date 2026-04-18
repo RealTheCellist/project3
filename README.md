@@ -67,6 +67,13 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 `Report > 로컬 PDF`는 앱에서 PDF를 생성해 저장합니다.
 `Report > 서버 PDF`는 FastAPI에서 PDF를 생성해 내려받아 저장합니다.
 
+## 운영/배포 문서
+
+- 환경변수 템플릿: `.env.example`
+- 릴리즈 체크리스트: `RELEASE_CHECKLIST.md`
+- 베타 테스트 시나리오: `BETA_TEST_SCENARIOS.md`
+- STT E2E 체크리스트: `STT_E2E_QA_CHECKLIST.md`
+
 ## 백엔드 테스트
 
 ```powershell
@@ -115,6 +122,7 @@ uvicorn app.main:app --reload
 - `accurate`: medium + beam 5 (정확도 우선, 느림)
 
 Flutter 앱에서는 Home 화면에서 STT Profile(`fast/balanced/accurate`)을 선택할 수 있습니다.
+Home 화면의 `STT Pipeline Diagnostics` 카드에서 시도 횟수/폴백 횟수/단계 로그를 확인할 수 있습니다.
 
 STT 에러 코드는 `detail.code`로 내려옵니다:
 - `audio_not_found`

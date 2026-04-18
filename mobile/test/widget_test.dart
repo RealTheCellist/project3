@@ -41,13 +41,19 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('conf=0.75 · anxiety from deadline'), findsOneWidget);
+    expect(
+      find.textContaining('conf=0.75 · anxiety from deadline'),
+      findsOneWidget,
+    );
     expect(find.textContaining('stable mood'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'deadline');
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('conf=0.75 · anxiety from deadline'), findsOneWidget);
+    expect(
+      find.textContaining('conf=0.75 · anxiety from deadline'),
+      findsOneWidget,
+    );
     expect(find.textContaining('stable mood'), findsNothing);
   });
 
@@ -136,5 +142,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('low confidence sample'), findsOneWidget);
     expect(find.textContaining('high confidence sample'), findsNothing);
+  });
+
+  testWidgets('Tag drill-down restores initial state on open', (
+    WidgetTester tester,
+  ) async {
+    final rows = List<CheckinHistoryItem>.generate(
+      10,
+      (i) => CheckinHistoryItem(
+        id: i + 1,
+        createdAt: '2026-04-18 10:00:${(i % 60).toString().padLeft(2, '0')}',
+        recoveryScore: 50 + i,
+        riskScore: 50 - (i % 10),
+        confidence: i == 8 ? 0.22 : 0.88,
+        holdDecision: false,
+        tags: const ['pressure'],
+        explanation: 'item $i',
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TagDrilldownScreen(
+          tag: 'pressure',
+          rows: rows,
+          initialState: const TagDrilldownViewState(
+            filter: TagConfidenceFilter.low,
+            sort: TagSort.newest,
+            page: 0,
+            query: 'item 8',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.widgetWithText(ChoiceChip, 'low'), findsOneWidget);
+    expect(find.textContaining('conf=0.22 · item 8'), findsOneWidget);
+    expect(find.textContaining('conf=0.88 · item 1'), findsNothing);
   });
 }

@@ -56,6 +56,7 @@ class _RootScreenState extends State<RootScreen> {
   String _sttProfile = 'balanced';
   int _sttAttempts = 0;
   int _sttFallbacks = 0;
+  final List<String> _sttTrace = <String>[];
 
   @override
   void initState() {
@@ -87,7 +88,7 @@ class _RootScreenState extends State<RootScreen> {
       if (!mounted) return;
       setState(() {
         _historyLoading = false;
-        _historyError = 'History load failed: $e';
+        _historyError = _friendlyError(e, scope: 'History load');
       });
     }
   }
@@ -99,6 +100,43 @@ class _RootScreenState extends State<RootScreen> {
       _error = msg;
     });
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  String _friendlyError(Object e, {required String scope}) {
+    final raw = e.toString();
+    if (raw.contains('TimeoutException') || raw.contains('timed out')) {
+      return '$scope timed out. Check network and retry.';
+    }
+    if (raw.contains('SocketException') || raw.contains('Failed host lookup')) {
+      return '$scope network unreachable.';
+    }
+    if (raw.contains('[audio_not_found]')) {
+      return '$scope failed: audio file not found.';
+    }
+    if (raw.contains('[empty_transcript]')) {
+      return '$scope failed: empty transcript. Please speak a little longer.';
+    }
+    if (raw.contains('[backend_not_installed]')) {
+      return '$scope failed: STT backend not installed on server.';
+    }
+    if (raw.contains('[transcription_failed]')) {
+      return '$scope failed: transcription engine error.';
+    }
+    if (raw.contains('HTTP 5')) {
+      return '$scope failed: server unavailable.';
+    }
+    return '$scope failed: $raw';
+  }
+
+  void _pushSttTrace(String stage, [String detail = '']) {
+    final ts = DateTime.now().toIso8601String().substring(11, 19);
+    final line = detail.isEmpty ? '[$ts] $stage' : '[$ts] $stage · $detail';
+    setState(() {
+      _sttTrace.insert(0, line);
+      if (_sttTrace.length > 12) {
+        _sttTrace.removeRange(12, _sttTrace.length);
+      }
+    });
   }
 
   Future<void> _toggleListening() async {
@@ -149,6 +187,10 @@ class _RootScreenState extends State<RootScreen> {
       if (!mounted) return;
       setState(() => _recording = false);
       if (path == null || path.isEmpty) return _setError('No recording file');
+      _pushSttTrace(
+        'recording_stopped',
+        path.split(Platform.pathSeparator).last,
+      );
       await _transcribeAndAnalyze(path);
       return;
     }
@@ -163,6 +205,7 @@ class _RootScreenState extends State<RootScreen> {
     );
     if (!mounted) return;
     setState(() => _recording = true);
+    _pushSttTrace('recording_started', 'profile=$_sttProfile');
   }
 
   Future<void> _transcribeAndAnalyze(String path) async {
@@ -171,19 +214,29 @@ class _RootScreenState extends State<RootScreen> {
       _error = '';
       _sttAttempts += 1;
     });
+    _pushSttTrace('pipeline_started', 'attempt=$_sttAttempts');
     try {
+      _pushSttTrace('uploading_audio');
       final stt = await ApiClient().transcribeAudio(path, profile: _sttProfile);
       if (!mounted) return;
+      _pushSttTrace(
+        'stt_ok',
+        'chars=${stt.transcript.length}, profile=$_sttProfile',
+      );
       _text.text = stt.transcript;
-      await analyze();
+      await analyze(fromPipeline: true);
     } catch (e) {
       setState(() => _sttFallbacks += 1);
-      _setError('STT failed: $e');
+      _pushSttTrace(
+        'stt_failed',
+        'fallback=device_speech_to_text ($_sttFallbacks/$_sttAttempts)',
+      );
+      _setError(_friendlyError(e, scope: 'STT'));
       await _toggleListening();
     }
   }
 
-  Future<void> analyze() async {
+  Future<void> analyze({bool fromPipeline = false}) async {
     final t = _text.text.trim();
     if (t.isEmpty) return _setError('Text required');
     setState(() {
@@ -191,6 +244,9 @@ class _RootScreenState extends State<RootScreen> {
       _error = '';
     });
     try {
+      if (fromPipeline) {
+        _pushSttTrace('analyzing_text', 'chars=${t.length}');
+      }
       final result = await ApiClient().analyzeCheckin(
         AnalyzeRequest(
           transcript: t,
@@ -205,9 +261,12 @@ class _RootScreenState extends State<RootScreen> {
         _status = AnalyzeStatus.success;
         _tab = 1;
       });
+      if (fromPipeline) {
+        _pushSttTrace('pipeline_done', 'recovery=${result.recoveryScore}');
+      }
       unawaited(_loadHistory());
     } catch (e) {
-      _setError('Analyze failed: $e');
+      _setError(_friendlyError(e, scope: 'Analyze'));
     }
   }
 
@@ -226,6 +285,9 @@ class _RootScreenState extends State<RootScreen> {
         recording: _recording,
         sttProfile: _sttProfile,
         onSttProfileChanged: (v) => setState(() => _sttProfile = v),
+        sttAttempts: _sttAttempts,
+        sttFallbacks: _sttFallbacks,
+        sttTrace: _sttTrace,
       ),
       ResultTab(
         status: _status,
@@ -284,6 +346,9 @@ class HomeTab extends StatelessWidget {
     required this.recording,
     required this.sttProfile,
     required this.onSttProfileChanged,
+    required this.sttAttempts,
+    required this.sttFallbacks,
+    required this.sttTrace,
     super.key,
   });
   final AnalyzeStatus status;
@@ -297,6 +362,9 @@ class HomeTab extends StatelessWidget {
   final bool recording;
   final String sttProfile;
   final ValueChanged<String> onSttProfileChanged;
+  final int sttAttempts;
+  final int sttFallbacks;
+  final List<String> sttTrace;
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +439,39 @@ class HomeTab extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'STT Pipeline Diagnostics',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'attempts: $sttAttempts · fallbacks: $sttFallbacks'
+                  ' · fallback-rate: ${sttAttempts == 0 ? '0.0' : ((sttFallbacks / sttAttempts) * 100).toStringAsFixed(1)}%',
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                ),
+                const SizedBox(height: 6),
+                if (sttTrace.isEmpty)
+                  const Text(
+                    'No pipeline runs yet.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ...sttTrace.map(
+                  (line) => Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(line, style: const TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -465,6 +566,22 @@ class _ReportTabState extends State<ReportTab> {
   String _summaryError = '';
   ReportSummaryResponse? _summary;
   int? _selectedTrendIndex;
+  final Map<String, TagDrilldownViewState> _drilldownStateByTag =
+      <String, TagDrilldownViewState>{};
+
+  String _friendlyError(Object e, {required String scope}) {
+    final raw = e.toString();
+    if (raw.contains('TimeoutException') || raw.contains('timed out')) {
+      return '$scope timed out. Check network and retry.';
+    }
+    if (raw.contains('SocketException') || raw.contains('Failed host lookup')) {
+      return '$scope network unreachable.';
+    }
+    if (raw.contains('HTTP 5')) {
+      return '$scope failed: server unavailable.';
+    }
+    return '$scope failed: $raw';
+  }
 
   @override
   void initState() {
@@ -497,7 +614,7 @@ class _ReportTabState extends State<ReportTab> {
       if (!mounted) return;
       setState(() {
         _summaryLoading = false;
-        _summaryError = 'Summary load failed: $e';
+        _summaryError = _friendlyError(e, scope: 'Summary load');
       });
     }
   }
@@ -542,6 +659,66 @@ class _ReportTabState extends State<ReportTab> {
   double _avgRisk(List<CheckinHistoryItem> rows) {
     if (rows.isEmpty) return 0;
     return rows.map((e) => e.riskScore).reduce((a, b) => a + b) / rows.length;
+  }
+
+  double _avgConfidence(List<CheckinHistoryItem> rows) {
+    if (rows.isEmpty) return 0;
+    return rows.map((e) => e.confidence).reduce((a, b) => a + b) / rows.length;
+  }
+
+  double _percentDelta(double current, double previous) {
+    if (previous.abs() < 0.0001) {
+      return current.abs() < 0.0001 ? 0 : 100;
+    }
+    return ((current - previous) / previous.abs()) * 100;
+  }
+
+  Widget _compareMetric({
+    required String label,
+    required double current,
+    required double previous,
+    required bool higherIsBetter,
+    int digits = 1,
+  }) {
+    final diff = current - previous;
+    final pct = _percentDelta(current, previous);
+    final improved = higherIsBetter ? diff >= 0 : diff <= 0;
+    final color = improved ? const Color(0xFF166534) : const Color(0xFFB42318);
+    final icon = improved ? Icons.arrow_upward : Icons.arrow_downward;
+    final trendLabel = improved ? 'improved' : 'worse';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$label  ${current.toStringAsFixed(digits)} (prev ${previous.toStringAsFixed(digits)})',
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  '${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(digits)}'
+                  ' (${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%)'
+                  ' $trendLabel',
+                  style: TextStyle(color: color, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<ReportTagStat> _topTagsFromRows(
@@ -736,6 +913,12 @@ class _ReportTabState extends State<ReportTab> {
     final curRisk = _avgRisk(rows);
     final prevRisk =
         _summary?.previousPeriod.avgRiskScore ?? _avgRisk(prevRows);
+    final curConf = _avgConfidence(rows);
+    final prevConf =
+        _summary?.previousPeriod.avgConfidence ?? _avgConfidence(prevRows);
+    final curCount = rows.length.toDouble();
+    final prevCount =
+        (_summary?.previousPeriod.totalCheckins ?? prevRows.length).toDouble();
     final selected =
         (_selectedTrendIndex != null &&
             _selectedTrendIndex! >= 0 &&
@@ -844,14 +1027,43 @@ class _ReportTabState extends State<ReportTab> {
           ),
         ),
         Card(
-          child: ListTile(
-            title: const Text('Period Compare (current vs previous)'),
-            subtitle: Text(
-              'Recovery ${curRec.toStringAsFixed(1)} vs ${prevRec.toStringAsFixed(1)}'
-              ' (${(curRec - prevRec >= 0 ? '+' : '')}${(curRec - prevRec).toStringAsFixed(1)})'
-              '\nRisk ${curRisk.toStringAsFixed(1)} vs ${prevRisk.toStringAsFixed(1)}'
-              ' (${(curRisk - prevRisk >= 0 ? '+' : '')}${(curRisk - prevRisk).toStringAsFixed(1)})'
-              '\nprevious rows: ${_summary?.previousPeriod.totalCheckins ?? prevRows.length}',
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Period Compare (current vs previous)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                _compareMetric(
+                  label: 'Recovery',
+                  current: curRec,
+                  previous: prevRec,
+                  higherIsBetter: true,
+                ),
+                _compareMetric(
+                  label: 'Risk',
+                  current: curRisk,
+                  previous: prevRisk,
+                  higherIsBetter: false,
+                ),
+                _compareMetric(
+                  label: 'Confidence',
+                  current: curConf,
+                  previous: prevConf,
+                  higherIsBetter: true,
+                  digits: 2,
+                ),
+                _compareMetric(
+                  label: 'Check-ins',
+                  current: curCount,
+                  previous: prevCount,
+                  higherIsBetter: true,
+                  digits: 0,
+                ),
+              ],
             ),
           ),
         ),
@@ -1001,13 +1213,21 @@ class _ReportTabState extends State<ReportTab> {
                       .map(
                         (e) => ActionChip(
                           label: Text('${e.tag}: ${e.count}'),
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    TagDrilldownScreen(tag: e.tag, rows: rows),
-                              ),
-                            );
+                          onPressed: () async {
+                            final restored = await Navigator.of(context)
+                                .push<TagDrilldownViewState>(
+                                  MaterialPageRoute<TagDrilldownViewState>(
+                                    builder: (_) => TagDrilldownScreen(
+                                      tag: e.tag,
+                                      rows: rows,
+                                      initialState: _drilldownStateByTag[e.tag],
+                                    ),
+                                  ),
+                                );
+                            if (!mounted || restored == null) return;
+                            setState(() {
+                              _drilldownStateByTag[e.tag] = restored;
+                            });
                           },
                         ),
                       )
@@ -1091,11 +1311,31 @@ enum TagConfidenceFilter { all, low, medium, high }
 
 enum TagSort { newest, oldest, recoveryDesc, confidenceAsc }
 
+class TagDrilldownViewState {
+  const TagDrilldownViewState({
+    required this.filter,
+    required this.sort,
+    required this.page,
+    required this.query,
+  });
+
+  final TagConfidenceFilter filter;
+  final TagSort sort;
+  final int page;
+  final String query;
+}
+
 class TagDrilldownScreen extends StatefulWidget {
-  const TagDrilldownScreen({required this.tag, required this.rows, super.key});
+  const TagDrilldownScreen({
+    required this.tag,
+    required this.rows,
+    this.initialState,
+    super.key,
+  });
 
   final String tag;
   final List<CheckinHistoryItem> rows;
+  final TagDrilldownViewState? initialState;
 
   @override
   State<TagDrilldownScreen> createState() => _TagDrilldownScreenState();
@@ -1110,10 +1350,32 @@ class _TagDrilldownScreenState extends State<TagDrilldownScreen> {
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    final init = widget.initialState;
+    if (init == null) return;
+    _filter = init.filter;
+    _sort = init.sort;
+    _page = init.page;
+    _searchQuery = init.query;
+    _searchController.text = init.query;
+    _searchController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _searchController.text.length),
+    );
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
+
+  TagDrilldownViewState _snapshotState() => TagDrilldownViewState(
+    filter: _filter,
+    sort: _sort,
+    page: _page,
+    query: _searchQuery,
+  );
 
   DateTime? _parseCreatedAt(String raw) {
     final n = raw.contains('T') ? raw : raw.replaceFirst(' ', 'T');
@@ -1246,162 +1508,175 @@ class _TagDrilldownScreenState extends State<TagDrilldownScreen> {
     final end = (start + _pageSize).clamp(0, rows.length);
     final pageRows = rows.sublist(start, end);
 
-    return Scaffold(
-      appBar: AppBar(title: Text('Tag Drill-down: ${widget.tag}')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _searchController,
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-                _page = 0;
-              });
-            },
-            decoration: InputDecoration(
-              labelText: 'Search in explanation/date',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                          _page = 0;
-                        });
-                      },
-                      icon: const Icon(Icons.clear),
-                    )
-                  : null,
-              border: const OutlineInputBorder(),
-            ),
+    return PopScope<TagDrilldownViewState>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.of(context).pop(_snapshotState());
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => Navigator.of(context).pop(_snapshotState()),
+            icon: const Icon(Icons.arrow_back),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('all'),
-                selected: _filter == TagConfidenceFilter.all,
-                onSelected: (_) => setState(() {
-                  _filter = TagConfidenceFilter.all;
+          title: Text('Tag Drill-down: ${widget.tag}'),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
                   _page = 0;
-                }),
-              ),
-              ChoiceChip(
-                label: const Text('low'),
-                selected: _filter == TagConfidenceFilter.low,
-                onSelected: (_) => setState(() {
-                  _filter = TagConfidenceFilter.low;
-                  _page = 0;
-                }),
-              ),
-              ChoiceChip(
-                label: const Text('medium'),
-                selected: _filter == TagConfidenceFilter.medium,
-                onSelected: (_) => setState(() {
-                  _filter = TagConfidenceFilter.medium;
-                  _page = 0;
-                }),
-              ),
-              ChoiceChip(
-                label: const Text('high'),
-                selected: _filter == TagConfidenceFilter.high,
-                onSelected: (_) => setState(() {
-                  _filter = TagConfidenceFilter.high;
-                  _page = 0;
-                }),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<TagSort>(
-            initialValue: _sort,
-            decoration: const InputDecoration(
-              labelText: 'Sort',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: TagSort.newest, child: Text('Newest')),
-              DropdownMenuItem(value: TagSort.oldest, child: Text('Oldest')),
-              DropdownMenuItem(
-                value: TagSort.recoveryDesc,
-                child: Text('Recovery desc'),
-              ),
-              DropdownMenuItem(
-                value: TagSort.confidenceAsc,
-                child: Text('Confidence asc'),
-              ),
-            ],
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() {
-                _sort = v;
-                _page = 0;
-              });
-            },
-          ),
-          const SizedBox(height: 8),
-          Text('Total ${rows.length} · page ${page + 1}/$totalPages'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => unawaited(_exportFilteredCsv(rows)),
-                  child: const Text('Export CSV'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => unawaited(_exportFilteredPdf(rows)),
-                  child: const Text('Export PDF'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (rows.isEmpty) const Text('(no matched rows)'),
-          ...pageRows.map(
-            (e) => Card(
-              child: ListTile(
-                title: Text(
-                  '${e.createdAt} · rec=${e.recoveryScore} risk=${e.riskScore}',
-                ),
-                subtitle: Text(
-                  'conf=${e.confidence.toStringAsFixed(2)} · ${e.explanation}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                });
+              },
+              decoration: InputDecoration(
+                labelText: 'Search in explanation/date',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                            _page = 0;
+                          });
+                        },
+                        icon: const Icon(Icons.clear),
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: page > 0
-                      ? () => setState(() => _page = page - 1)
-                      : null,
-                  child: const Text('Prev'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('all'),
+                  selected: _filter == TagConfidenceFilter.all,
+                  onSelected: (_) => setState(() {
+                    _filter = TagConfidenceFilter.all;
+                    _page = 0;
+                  }),
+                ),
+                ChoiceChip(
+                  label: const Text('low'),
+                  selected: _filter == TagConfidenceFilter.low,
+                  onSelected: (_) => setState(() {
+                    _filter = TagConfidenceFilter.low;
+                    _page = 0;
+                  }),
+                ),
+                ChoiceChip(
+                  label: const Text('medium'),
+                  selected: _filter == TagConfidenceFilter.medium,
+                  onSelected: (_) => setState(() {
+                    _filter = TagConfidenceFilter.medium;
+                    _page = 0;
+                  }),
+                ),
+                ChoiceChip(
+                  label: const Text('high'),
+                  selected: _filter == TagConfidenceFilter.high,
+                  onSelected: (_) => setState(() {
+                    _filter = TagConfidenceFilter.high;
+                    _page = 0;
+                  }),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<TagSort>(
+              initialValue: _sort,
+              decoration: const InputDecoration(
+                labelText: 'Sort',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: TagSort.newest, child: Text('Newest')),
+                DropdownMenuItem(value: TagSort.oldest, child: Text('Oldest')),
+                DropdownMenuItem(
+                  value: TagSort.recoveryDesc,
+                  child: Text('Recovery desc'),
+                ),
+                DropdownMenuItem(
+                  value: TagSort.confidenceAsc,
+                  child: Text('Confidence asc'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() {
+                  _sort = v;
+                  _page = 0;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            Text('Total ${rows.length} · page ${page + 1}/$totalPages'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => unawaited(_exportFilteredCsv(rows)),
+                    child: const Text('Export CSV'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => unawaited(_exportFilteredPdf(rows)),
+                    child: const Text('Export PDF'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (rows.isEmpty) const Text('(no matched rows)'),
+            ...pageRows.map(
+              (e) => Card(
+                child: ListTile(
+                  title: Text(
+                    '${e.createdAt} · rec=${e.recoveryScore} risk=${e.riskScore}',
+                  ),
+                  subtitle: Text(
+                    'conf=${e.confidence.toStringAsFixed(2)} · ${e.explanation}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: page < totalPages - 1
-                      ? () => setState(() => _page = page + 1)
-                      : null,
-                  child: const Text('Next'),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: page > 0
+                        ? () => setState(() => _page = page - 1)
+                        : null,
+                    child: const Text('Prev'),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: page < totalPages - 1
+                        ? () => setState(() => _page = page + 1)
+                        : null,
+                    child: const Text('Next'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1718,15 +1993,33 @@ class ApiClient {
     String language = 'ko',
     String profile = 'balanced',
   }) async {
-    final uri = Uri.parse('$_baseUrl/stt?language=$language&profile=$profile');
-    final req = http.MultipartRequest('POST', uri);
-    req.files.add(await http.MultipartFile.fromPath('file', filePath));
-    final res = await req.send().timeout(const Duration(seconds: 45));
-    final body = await res.stream.bytesToString();
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception(_extractError(body) ?? 'HTTP ${res.statusCode}');
+    Object? lastError;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final uri = Uri.parse(
+          '$_baseUrl/stt?language=$language&profile=$profile',
+        );
+        final req = http.MultipartRequest('POST', uri);
+        req.files.add(await http.MultipartFile.fromPath('file', filePath));
+        final res = await req.send().timeout(const Duration(seconds: 45));
+        final body = await res.stream.bytesToString();
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          throw Exception(_extractError(body) ?? 'HTTP ${res.statusCode}');
+        }
+        return STTResponse.fromJson(jsonDecode(body) as Map<String, dynamic>);
+      } catch (e) {
+        lastError = e;
+        final retryable =
+            e is TimeoutException ||
+            e is SocketException ||
+            e.toString().contains('HTTP 5');
+        if (!retryable || attempt == 1) {
+          rethrow;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      }
     }
-    return STTResponse.fromJson(jsonDecode(body) as Map<String, dynamic>);
+    throw Exception(lastError ?? 'STT failed');
   }
 
   String? _extractError(String body) {

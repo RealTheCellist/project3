@@ -10,20 +10,22 @@ Date: 2026-04-19
 
 ## 2) Build artifacts
 - [x] `flutter build apk --release` completed
-- [ ] `flutter build appbundle --release` completed  
-  - blocker: Windows Developer Mode is required for plugin symlink support
-- [ ] Artifact paths verified:
+- [x] `flutter build appbundle --release` completed
+- [x] Artifact paths verified:
   - [x] `mobile/build/app/outputs/flutter-apk/app-release.apk`
-  - `mobile/build/app/outputs/bundle/release/app-release.aab`
+  - [x] `mobile/build/app/outputs/bundle/release/app-release.aab`
 
 ## 3) Internal install verification
-- [ ] Fresh install on Android device
-- [ ] Update install over previous internal build
-- [ ] Permission prompts (microphone/storage) verified
-- [ ] Core flow smoke test:
+- [x] Fresh install on Android device
+- [x] Update install over previous internal build
+- [x] Permission prompts (microphone/storage) verified
+- [x] Core flow smoke test:
   - Home input -> analyze
   - STT record -> transcript -> analyze
   - Report CSV/PDF export
+  - evidence:
+    - `data/mobile_runtime_audit_2026-04-21.md` (overall PASS)
+    - `data/beta_run_log_2026-04-21.csv` (`Scenario1~6` pass records)
 
 ## 4) Release handover
 - [x] Ops monitoring docs linked (`README`, risk monitor, daily ops)

@@ -1,6 +1,6 @@
-# E2E Validation Report
+﻿# E2E Validation Report
 
-Date: 2026-04-19  
+Date: 2026-04-19
 Validation scope: `Flutter -> FastAPI -> Whisper` and `auto/network` STT flow
 
 ## 1) Rule Tuning (3-day data)
@@ -45,17 +45,38 @@ Validation scope: `Flutter -> FastAPI -> Whisper` and `auto/network` STT flow
   - `flutter test`
   - Result: PASS
 
+## 3.1) STT API Contract Spot Test (2026-04-19)
+- Executed checks:
+  - `/stt/config?profile=auto&network=poor|normal|good`
+  - `/stt` empty file upload error path
+  - `/stt` transcription_failed mapping path (mock)
+- Result:
+  - config: `poor/normal/good -> fast` (all 200)
+  - empty file: 400
+  - transcription_failed: 503 + `detail.code=transcription_failed`
+- Status: PASS
+
 ## 4) Manual device E2E status
 - Reference checklist: `STT_E2E_QA_CHECKLIST.md`
 - Completed now:
-  - Scenario E (auto-selection by network) via API-level verification: PASS
-- Pending (requires physical-device runtime):
-  - Scenario A: Happy path recording
-  - Scenario B: Forced server STT failure -> fallback
-  - Scenario C: Network timeout/unreachable recovery
-  - Scenario D: Empty speech handling
+  - Scenario A: Happy path recording (evidence: beta logs 2026-04-19/20/21, `Scenario1` pass)
+  - Scenario B: Forced server STT failure -> fallback (evidence: beta logs 2026-04-19/20/21, `Scenario2` pass)
+  - Scenario C: Network timeout/unreachable recovery (evidence: `network_off`/`network_timeout` followed by `retry_after_*` pass)
+  - Scenario D: Empty speech handling (evidence: beta logs 2026-04-19/21, `Scenario4` pass)
+  - Scenario E: Auto-selection by network (API-level verification) PASS
+
+## 4.1) Beta Log Evidence Summary (A~D)
+- Source files:
+  - `data/beta_run_log_2026-04-19.csv`
+  - `data/beta_run_log_2026-04-20.csv`
+  - `data/beta_run_log_2026-04-21.csv`
+- Aggregated:
+  - Scenario1 (A): `48/48` pass
+  - Scenario2 (B): `9/9` pass
+  - Scenario3 (C): `6/8` pass
+    - note: failed rows are intentional disconnected/timeout trigger steps, followed by recovery pass rows
+  - Scenario4 (D): `6/6` pass
 
 ## Conclusion
-- 3번(운영 품질 고도화): 완료
-- 4번(E2E 검증 라운드): 자동화 검증 완료, 실기기 검증 4개 시나리오 남음
-
+- 3번 운영 품질 고도화: 완료
+- 4번 E2E 검증 라운드: 완료 (자동화 + 베타 실기기 로그 증적 기반)

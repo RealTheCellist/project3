@@ -93,6 +93,18 @@ def main() -> None:
                 f"data/stt_autoselect_{network}_{date}.json",
             ]
         )
+    _run(
+        [
+            sys.executable,
+            "scripts/stt_rules_tuning.py",
+            "--days",
+            "3",
+            "--json-output",
+            f"data/stt_rules_tuning_{date}.json",
+            "--md-output",
+            f"data/stt_rules_tuning_{date}.md",
+        ]
+    )
 
     runtime_sync = root / "data" / f"stt_runtime_sync_{date}.md"
     runtime_sync.write_text(

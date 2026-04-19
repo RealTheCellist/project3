@@ -104,6 +104,8 @@ PY
             data/stt_profile_review_*.json
             data/stt_profile_review_*.md
             data/stt_autoselect_*.json
+            data/stt_rules_tuning_*.json
+            data/stt_rules_tuning_*.md
             data/stt_runtime_sync_*.md
             DAILY_BETA_REPORT_*.md
           if-no-files-found: warn

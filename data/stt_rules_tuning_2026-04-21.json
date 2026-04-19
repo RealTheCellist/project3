@@ -1,0 +1,51 @@
+{
+  "input_files": [
+    "data/stt_profile_review_2026-04-19.json",
+    "data/stt_profile_review_2026-04-20.json",
+    "data/stt_profile_review_2026-04-21.json"
+  ],
+  "summary": {
+    "fast": {
+      "attempts": 18,
+      "success_rate": 88.89,
+      "fallback_rate": 11.11,
+      "avg_latency_ms": 1901.67
+    },
+    "balanced": {
+      "attempts": 14,
+      "success_rate": 85.71,
+      "fallback_rate": 14.29,
+      "avg_latency_ms": 2162.86
+    },
+    "accurate": {
+      "attempts": 10,
+      "success_rate": 80.0,
+      "fallback_rate": 20.0,
+      "avg_latency_ms": 2499.0
+    }
+  },
+  "suggested_rules": {
+    "preferred_default": "fast",
+    "network_rules": {
+      "poor": "fast",
+      "normal": "fast",
+      "good": "fast"
+    },
+    "fallback_rate_override_threshold": 12.7,
+    "latency_override_threshold_ms": 2032.3,
+    "observed": {
+      "fast": {
+        "fallback_rate": 11.11,
+        "avg_latency_ms": 1901.67
+      },
+      "balanced": {
+        "fallback_rate": 14.29,
+        "avg_latency_ms": 2162.86
+      },
+      "accurate": {
+        "fallback_rate": 20.0,
+        "avg_latency_ms": 2499.0
+      }
+    }
+  }
+}

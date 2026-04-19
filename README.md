@@ -96,6 +96,7 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 안정화 리포트: `STABILIZATION_REPORT_2026-04-21.md`
 - 데이터 보존 배치 워크플로우: `.github/workflows/data-retention.yml`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
+- E2E 검증 리포트: `E2E_VALIDATION_2026-04-19.md`
 
 베타 KPI 집계 예시:
 
@@ -288,6 +289,15 @@ python scripts/stt_profile_autoselect.py ^
   --rules data/stt_autoselect_rules.json ^
   --review-json data/stt_profile_review_2026-04-21.json ^
   --output data/stt_autoselect_normal_2026-04-21.json
+```
+
+최근 N일 프로파일 리뷰 기준 rules 튜닝:
+
+```powershell
+python scripts/stt_rules_tuning.py ^
+  --days 3 ^
+  --json-output data/stt_rules_tuning_2026-04-21.json ^
+  --md-output data/stt_rules_tuning_2026-04-21.md
 ```
 
 일일 운영 파이프라인 실행 시 최신 `stt_profile_review_YYYY-MM-DD.json` 기반으로

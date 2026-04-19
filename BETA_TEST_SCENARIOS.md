@@ -5,13 +5,15 @@ Target: Mobile app MVP (`Flutter -> FastAPI -> Whisper`)
 
 ## Scenario 1: Happy Path
 1. Enter text manually and run analysis.
-2. Record 5-10 seconds and run STT analysis.
+2. Set STT profile=`auto`, network=`normal`.
+3. Record 5-10 seconds and run STT analysis.
 3. Open Report tab and verify compare/trend/tags.
 
 Expected:
 - Recovery/Risk/Confidence values shown
 - No crash
 - Result and Report screens consistent
+- STT diagnostics includes profile/network traces
 
 ## Scenario 2: STT Failure + Fallback
 1. Force backend STT failure (disable backend or invalid setup).
@@ -24,7 +26,7 @@ Expected:
 
 ## Scenario 3: Network Instability
 1. Disconnect network.
-2. Trigger analyze and STT.
+2. Set network=`poor`, then trigger analyze and STT.
 3. Reconnect and retry.
 
 Expected:
@@ -61,4 +63,5 @@ Expected:
 - STT fallback rate
 - Average request latency
 - Number of user-reported confusion/error cases
+- Auto profile consistency (`/stt/config` vs generated `stt_autoselect_*` artifacts)
 

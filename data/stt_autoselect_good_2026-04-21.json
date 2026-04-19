@@ -1,4 +1,4 @@
 {
   "profile": "fast",
-  "reason": "network=good -> accurate; override: selected profile fallback/latency exceeded threshold (25.00%/2500.00ms), using recommended=fast"
+  "reason": "network=good -> fast"
 }

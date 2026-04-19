@@ -1,10 +1,10 @@
 {
-  "preferred_default": "balanced",
+  "preferred_default": "fast",
   "network_rules": {
     "poor": "fast",
-    "normal": "balanced",
-    "good": "accurate"
+    "normal": "fast",
+    "good": "fast"
   },
-  "fallback_rate_override_threshold": 20.0,
-  "latency_override_threshold_ms": 2200.0
+  "fallback_rate_override_threshold": 13.0,
+  "latency_override_threshold_ms": 2050.0
 }

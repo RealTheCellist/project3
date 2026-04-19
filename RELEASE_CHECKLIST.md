@@ -25,7 +25,7 @@ Note: Mobile runtime items below require physical-device verification. Seed/dry-
 
 ## 4. Environment & Config
 - [x] `.env` created from `.env.example`
-- [x] STT profile fixed for release target (`balanced` recommended)
+- [x] STT profile strategy fixed for release target (`auto`, default runtime currently `fast`)
 - [x] Model mode decision fixed:
   - [x] Rule-only mode
   - [ ] Open-source model mode

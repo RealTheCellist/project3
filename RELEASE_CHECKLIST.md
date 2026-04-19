@@ -12,7 +12,7 @@ Note: Mobile runtime items below require physical-device verification. Seed/dry-
 - [x] `GET /health` is OK
 - [x] `POST /analyze-checkin` returns valid score/tags/routines
 - [x] `GET /report/summary` includes `previous_period`
-- [x] `POST /stt` works with selected profile (`fast|balanced|accurate`)
+- [x] `POST /stt` works with selected profile (`fast|balanced|accurate|auto`) and network (`poor|normal|good`)
 - [x] Error codes are verified (`audio_not_found`, `empty_transcript`, `backend_not_installed`, `transcription_failed`)
 
 ## 3. Mobile Runtime Check

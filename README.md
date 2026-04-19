@@ -87,6 +87,8 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.1-beta.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.2-beta.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.3-beta.md`
+- 릴리즈 노트: `RELEASE_NOTES_v0.1.4-beta.md`
+- 릴리즈 범위: `RELEASE_SCOPE_v0.1.4-beta.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
 - 릴리즈 아카이브: `releases/2026-04-21-v0.1.3-beta/README.md`
 - 장애 대응 모의훈련: `INCIDENT_DRILL_2026-04-20.md`

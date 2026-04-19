@@ -105,26 +105,30 @@ class _RootScreenState extends State<RootScreen> {
 
   String _friendlyError(Object e, {required String scope}) {
     final raw = e.toString();
+    final sttActionHint =
+        scope == 'STT'
+            ? ' Tip: use profile=auto and set network to current condition.'
+            : '';
     if (raw.contains('TimeoutException') || raw.contains('timed out')) {
-      return '$scope timed out. Check network and retry.';
+      return '$scope timed out. Check network and retry.$sttActionHint';
     }
     if (raw.contains('SocketException') || raw.contains('Failed host lookup')) {
-      return '$scope network unreachable.';
+      return '$scope network unreachable.$sttActionHint';
     }
     if (raw.contains('[audio_not_found]')) {
-      return '$scope failed: audio file not found.';
+      return '$scope failed: audio file not found. Please record again.';
     }
     if (raw.contains('[empty_transcript]')) {
       return '$scope failed: empty transcript. Please speak a little longer.';
     }
     if (raw.contains('[backend_not_installed]')) {
-      return '$scope failed: STT backend not installed on server.';
+      return '$scope failed: STT backend not installed on server. Device speech fallback will run.';
     }
     if (raw.contains('[transcription_failed]')) {
-      return '$scope failed: transcription engine error.';
+      return '$scope failed: transcription engine error.$sttActionHint';
     }
     if (raw.contains('HTTP 5')) {
-      return '$scope failed: server unavailable.';
+      return '$scope failed: server unavailable.$sttActionHint';
     }
     return '$scope failed: $raw';
   }
@@ -434,6 +438,13 @@ class HomeTab extends StatelessWidget {
               },
             ),
           ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          sttProfile == 'auto'
+              ? 'auto mode: server selects profile by network/review data. current network=$sttNetwork'
+              : 'manual mode: choose auto for adaptive profile selection.',
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(

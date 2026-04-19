@@ -206,5 +206,9 @@ void main() {
         .whereType<String>()
         .toList();
     expect(networkValues, containsAll(<String>['poor', 'normal', 'good']));
+    expect(
+      find.textContaining('manual mode: choose auto for adaptive profile selection.'),
+      findsOneWidget,
+    );
   });
 }

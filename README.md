@@ -86,9 +86,13 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.0-beta.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.1-beta.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.2-beta.md`
+- 릴리즈 노트: `RELEASE_NOTES_v0.1.3-beta.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
+- 릴리즈 아카이브: `releases/2026-04-21-v0.1.3-beta/README.md`
 - 장애 대응 모의훈련: `INCIDENT_DRILL_2026-04-20.md`
 - Actions 검증 메모: `ACTIONS_VERIFICATION_2026-04-21.md`
+- 안정화 리포트: `STABILIZATION_REPORT_2026-04-21.md`
+- 데이터 보존 배치 워크플로우: `.github/workflows/data-retention.yml`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 
 베타 KPI 집계 예시:
@@ -271,6 +275,30 @@ python scripts/run_latest_daily_ops.py --owner TheCellist --build "MVP beta"
 
 GitHub Actions:
 - `.github/workflows/daily-ops.yml` (cron + 수동 실행)
+- `sev2` 발생 시 GitHub issue 자동 생성
+- `SLACK_WEBHOOK_URL` secret 설정 시 Slack 알림 전송
+
+STT 자동 프로파일 선택(네트워크 상태 기반):
+
+```powershell
+python scripts/stt_profile_autoselect.py ^
+  --network normal ^
+  --rules data/stt_autoselect_rules.json ^
+  --review-json data/stt_profile_review_2026-04-21.json ^
+  --output data/stt_autoselect_normal_2026-04-21.json
+```
+
+로그 익명화 백필:
+
+```powershell
+python scripts/anonymize_beta_logs.py --glob "data/beta_run_log_*.csv"
+```
+
+데이터 보존/삭제 배치:
+
+```powershell
+python scripts/data_retention_job.py --dry-run
+```
 
 운영 임계치 설정 파일:
 - `data/risk_thresholds.json`

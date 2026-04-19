@@ -1,26 +1,26 @@
-timestamp,tester,device,scenario,step,analyze_ok,stt_ok,fallback_used,latency_ms,outcome,note
-2026-04-19T10:00:00+09:00,tester_a,Android Pixel 7,Scenario1,manual_text,true,,false,920,pass,manual analyze success
-2026-04-19T10:03:00+09:00,tester_a,Android Pixel 7,Scenario1,stt_record,true,true,false,2100,pass,balanced
-2026-04-19T10:07:00+09:00,tester_b,iPhone 14,Scenario2,stt_fallback,true,false,true,3800,pass,fallback activated
-2026-04-19T10:11:00+09:00,tester_c,Galaxy S23,Scenario1,manual_text,true,,false,880,pass,quick input
-2026-04-19T10:15:00+09:00,tester_c,Galaxy S23,Scenario1,stt_record,true,true,false,1960,pass,fast profile
-2026-04-19T10:19:00+09:00,tester_d,iPhone 13,Scenario3,network_off,false,false,false,0,fail,network unreachable expected
-2026-04-19T10:22:00+09:00,tester_d,iPhone 13,Scenario3,retry_after_network,true,true,false,2300,pass,recovered
-2026-04-19T10:27:00+09:00,tester_e,Pixel 8,Scenario4,empty_audio,true,false,true,2600,pass,empty transcript fallback
-2026-04-19T10:31:00+09:00,tester_f,Galaxy Z,Scenario5,drilldown_state,true,,false,700,pass,state restored
-2026-04-19T10:35:00+09:00,tester_g,iPhone 15,Scenario6,export_csv,true,,false,1100,pass,report csv ok
-2026-04-19T10:37:00+09:00,tester_g,iPhone 15,Scenario6,export_pdf_local,true,,false,1450,pass,local pdf ok
-2026-04-19T10:40:00+09:00,tester_h,Pixel 6,Scenario1,stt_record,true,true,false,2050,pass,balanced
-2026-04-19T10:44:00+09:00,tester_h,Pixel 6,Scenario2,stt_fallback,true,false,true,3550,pass,backend failure
-2026-04-19T10:48:00+09:00,tester_i,Galaxy A54,Scenario1,manual_text,true,,false,960,pass,ok
-2026-04-19T10:52:00+09:00,tester_i,Galaxy A54,Scenario1,stt_record,true,true,false,2400,pass,accurate
-2026-04-19T10:56:00+09:00,tester_j,iPhone SE,Scenario3,network_timeout,false,false,false,45000,fail,timeout
-2026-04-19T11:00:00+09:00,tester_j,iPhone SE,Scenario3,retry_after_timeout,true,true,false,2500,pass,recovered
-2026-04-19T11:04:00+09:00,tester_k,Pixel 7,Scenario4,short_audio,true,false,true,2700,pass,short speech
-2026-04-19T11:08:00+09:00,tester_l,Galaxy S24,Scenario1,manual_text,true,,false,840,pass,ok
-2026-04-19T11:12:00+09:00,tester_l,Galaxy S24,Scenario1,stt_record,true,true,false,1900,pass,balanced
-2026-04-19T11:16:00+09:00,tester_m,iPhone 12,Scenario6,export_pdf_server,true,,false,1620,pass,server pdf ok
-2026-04-19T11:20:00+09:00,tester_n,Pixel 5,Scenario5,drilldown_state,true,,false,760,pass,restored
-2026-04-19T11:24:00+09:00,tester_o,Galaxy S22,Scenario2,stt_fallback,true,false,true,3400,pass,fallback
-2026-04-19T11:28:00+09:00,tester_p,iPhone 14,Scenario1,stt_record,true,true,false,2250,pass,balanced
-2026-04-19T12:10:00+09:00,tester_q,Pixel 7,Scenario5,report_compare,true,,false,980,pass,report compare card verified
+timestamp,tester,device,scenario,step,analyze_ok,stt_ok,fallback_used,latency_ms,outcome,note,tester_hash,device_hash
+2026-04-19T10:00:00+09:00,tester_a,Android Pixel 7,Scenario1,manual_text,true,,false,920,pass,manual analyze success,bd7b9f0e648f,84f2f09919a9
+2026-04-19T10:03:00+09:00,tester_a,Android Pixel 7,Scenario1,stt_record,true,true,false,2100,pass,balanced,bd7b9f0e648f,84f2f09919a9
+2026-04-19T10:07:00+09:00,tester_b,iPhone 14,Scenario2,stt_fallback,true,false,true,3800,pass,fallback activated,f73d3dee73df,dcc1379f26be
+2026-04-19T10:11:00+09:00,tester_c,Galaxy S23,Scenario1,manual_text,true,,false,880,pass,quick input,51df1a952a00,078dfdcce630
+2026-04-19T10:15:00+09:00,tester_c,Galaxy S23,Scenario1,stt_record,true,true,false,1960,pass,fast profile,51df1a952a00,078dfdcce630
+2026-04-19T10:19:00+09:00,tester_d,iPhone 13,Scenario3,network_off,false,false,false,0,fail,network unreachable expected,5fa31567bb4f,032795c93b9f
+2026-04-19T10:22:00+09:00,tester_d,iPhone 13,Scenario3,retry_after_network,true,true,false,2300,pass,recovered,5fa31567bb4f,032795c93b9f
+2026-04-19T10:27:00+09:00,tester_e,Pixel 8,Scenario4,empty_audio,true,false,true,2600,pass,empty transcript fallback,1c23a7f81df3,2f0e012bd34e
+2026-04-19T10:31:00+09:00,tester_f,Galaxy Z,Scenario5,drilldown_state,true,,false,700,pass,state restored,57af7281fa78,1cdf9ddb7d1b
+2026-04-19T10:35:00+09:00,tester_g,iPhone 15,Scenario6,export_csv,true,,false,1100,pass,report csv ok,3aa103600566,72954355f77c
+2026-04-19T10:37:00+09:00,tester_g,iPhone 15,Scenario6,export_pdf_local,true,,false,1450,pass,local pdf ok,3aa103600566,72954355f77c
+2026-04-19T10:40:00+09:00,tester_h,Pixel 6,Scenario1,stt_record,true,true,false,2050,pass,balanced,405875e6e774,da67ef68e1b5
+2026-04-19T10:44:00+09:00,tester_h,Pixel 6,Scenario2,stt_fallback,true,false,true,3550,pass,backend failure,405875e6e774,da67ef68e1b5
+2026-04-19T10:48:00+09:00,tester_i,Galaxy A54,Scenario1,manual_text,true,,false,960,pass,ok,bbe95d8e6b64,93ce4328d9b9
+2026-04-19T10:52:00+09:00,tester_i,Galaxy A54,Scenario1,stt_record,true,true,false,2400,pass,accurate,bbe95d8e6b64,93ce4328d9b9
+2026-04-19T10:56:00+09:00,tester_j,iPhone SE,Scenario3,network_timeout,false,false,false,45000,fail,timeout,5bc539df4dea,b1e7c2112f07
+2026-04-19T11:00:00+09:00,tester_j,iPhone SE,Scenario3,retry_after_timeout,true,true,false,2500,pass,recovered,5bc539df4dea,b1e7c2112f07
+2026-04-19T11:04:00+09:00,tester_k,Pixel 7,Scenario4,short_audio,true,false,true,2700,pass,short speech,f8012dd875f9,54827e532586
+2026-04-19T11:08:00+09:00,tester_l,Galaxy S24,Scenario1,manual_text,true,,false,840,pass,ok,7aab6968f20d,b406b0d2d6f2
+2026-04-19T11:12:00+09:00,tester_l,Galaxy S24,Scenario1,stt_record,true,true,false,1900,pass,balanced,7aab6968f20d,b406b0d2d6f2
+2026-04-19T11:16:00+09:00,tester_m,iPhone 12,Scenario6,export_pdf_server,true,,false,1620,pass,server pdf ok,34f5e200dcd0,693a07a1a55f
+2026-04-19T11:20:00+09:00,tester_n,Pixel 5,Scenario5,drilldown_state,true,,false,760,pass,restored,2c757067c06b,8c3ad5f1c5a3
+2026-04-19T11:24:00+09:00,tester_o,Galaxy S22,Scenario2,stt_fallback,true,false,true,3400,pass,fallback,bbae6982dc80,a6e1027e4ad2
+2026-04-19T11:28:00+09:00,tester_p,iPhone 14,Scenario1,stt_record,true,true,false,2250,pass,balanced,a0547533368b,dcc1379f26be
+2026-04-19T12:10:00+09:00,tester_q,Pixel 7,Scenario5,report_compare,true,,false,980,pass,report compare card verified,1aa374cd5fb7,54827e532586

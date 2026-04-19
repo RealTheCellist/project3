@@ -32,6 +32,66 @@ jobs:
             python scripts/run_latest_daily_ops.py --owner "TheCellist" --build "MVP beta (CI)"
           fi
 
+      - name: Detect latest risk report
+        id: risk
+        shell: bash
+        run: |
+          python - <<'PY'
+import glob
+import json
+import os
+
+paths = sorted(glob.glob("data/risk_monitor_*.json"))
+out_path = os.environ["GITHUB_OUTPUT"]
+if not paths:
+    with open(out_path, "a", encoding="utf-8") as f:
+        f.write("found=false\n")
+    raise SystemExit(0)
+
+latest = paths[-1]
+payload = json.load(open(latest, encoding="utf-8"))
+sev = str(payload.get("severity", "unknown"))
+act = str(payload.get("action", ""))
+rollback = str(payload.get("rollback_recommended", False)).lower()
+with open(out_path, "a", encoding="utf-8") as f:
+    f.write("found=true\n")
+    f.write(f"path={latest}\n")
+    f.write(f"severity={sev}\n")
+    f.write(f"action={act}\n")
+    f.write(f"rollback={rollback}\n")
+PY
+
+      - name: Open issue on sev2
+        if: steps.risk.outputs.found == 'true' && steps.risk.outputs.severity == 'sev2'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Daily Ops Alert: severity=sev2 (${new Date().toISOString().slice(0,10)})`;
+            const body = [
+              `Risk report: \`${{ steps.risk.outputs.path }}\``,
+              `Severity: **${{ steps.risk.outputs.severity }}**`,
+              `Action: ${{ steps.risk.outputs.action }}`,
+              `Rollback recommended: ${{ steps.risk.outputs.rollback }}`,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ops-alert', 'sev2']
+            });
+
+      - name: Optional Slack notification
+        if: steps.risk.outputs.found == 'true' && env.SLACK_WEBHOOK_URL != ''
+        shell: bash
+        run: |
+          MSG="Daily Ops: severity=${{ steps.risk.outputs.severity }}, rollback=${{ steps.risk.outputs.rollback }}, action=${{ steps.risk.outputs.action }}"
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$MSG\"}" \
+            "$SLACK_WEBHOOK_URL"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Upload generated artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -45,4 +105,3 @@ jobs:
             data/stt_profile_review_*.md
             DAILY_BETA_REPORT_*.md
           if-no-files-found: warn
-

@@ -19,6 +19,15 @@ Scope: Sumpyo MVP beta
 - End-of-beta purge: execute DB backup + anonymization + deletion
 - Temporary audio files: delete immediately after STT processing
 
+## Batch Operations
+- Daily retention job script: `scripts/data_retention_job.py`
+  - default: log/report artifacts 30 days, checkins 90 days
+  - dry-run: `python scripts/data_retention_job.py --dry-run`
+- GitHub Actions schedule:
+  - `.github/workflows/data-retention.yml`
+- Log anonymization backfill:
+  - `python scripts/anonymize_beta_logs.py --glob "data/beta_run_log_*.csv"`
+
 ## Access Control
 - Access limited to project team members
 - No public sharing of raw transcripts

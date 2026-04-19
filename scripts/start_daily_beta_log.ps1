@@ -3,7 +3,7 @@
   [string]$Dir = 'data'
 )
 
-$header = 'timestamp,tester,device,scenario,step,analyze_ok,stt_ok,fallback_used,latency_ms,outcome,note'
+$header = 'timestamp,tester,device,scenario,step,analyze_ok,stt_ok,fallback_used,latency_ms,outcome,note,tester_hash,device_hash'
 if (-not (Test-Path $Dir)) {
   New-Item -ItemType Directory -Path $Dir | Out-Null
 }

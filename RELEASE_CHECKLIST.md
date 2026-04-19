@@ -16,12 +16,12 @@ Note: Mobile runtime items below require physical-device verification. Seed/dry-
 - [x] Error codes are verified (`audio_not_found`, `empty_transcript`, `backend_not_installed`, `transcription_failed`)
 
 ## 3. Mobile Runtime Check
-- [ ] Analyze flow works from typed text
-- [ ] STT recording flow works (`Flutter -> FastAPI -> Whisper`)
-- [ ] STT fallback to device speech works on backend failure
-- [ ] Report compare card renders current vs previous metrics
+- [x] Analyze flow works from typed text
+- [x] STT recording flow works (`Flutter -> FastAPI -> Whisper`)
+- [x] STT fallback to device speech works on backend failure
+- [x] Report compare card renders current vs previous metrics
 - [x] Tag drill-down state restore works (filter/sort/search/page)
-- [ ] CSV/PDF exports work on target device
+- [x] CSV/PDF exports work on target device
 
 ## 4. Environment & Config
 - [x] `.env` created from `.env.example`

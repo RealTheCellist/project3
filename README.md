@@ -82,6 +82,7 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - Go/No-Go 기록: `GO_NO_GO_2026-04-19.md`
 - 롤백 계획: `ROLLBACK_PLAN.md`
 - STT 튜닝 계획: `STT_TUNING_PLAN.md`
+- 릴리즈 노트: `RELEASE_NOTES_v0.1.0-beta.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 

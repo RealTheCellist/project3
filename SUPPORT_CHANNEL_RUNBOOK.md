@@ -31,3 +31,12 @@ Owner: TheCellist
 2. If `sev1` or `sev2`, open incident using `INCIDENT_MESSAGE_TEMPLATE.md`.
 3. Assign engineering owner and ETA.
 4. Post resolution + root cause summary.
+
+## Daily Risk Thresholds
+- Analyze success rate < 90%: escalate to `sev2`
+- STT fallback rate > 20%: escalate to `sev2`
+- P95 latency > 4000ms: escalate to `sev2`
+- Mobile runtime audit FAIL: stop external rollout and escalate
+
+Run:
+- `python scripts/risk_monitor.py --date YYYY-MM-DD --kpi-json data/beta_kpi_summary_YYYY-MM-DD.json --audit-md data/mobile_runtime_audit_YYYY-MM-DD.md --json-output data/risk_monitor_YYYY-MM-DD.json --md-output data/risk_monitor_YYYY-MM-DD.md`

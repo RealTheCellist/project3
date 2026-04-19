@@ -1,0 +1,32 @@
+{
+  "source_csv": "data/beta_run_log_2026-04-19.csv",
+  "unknown_profile_attempts": 3,
+  "profiles": {
+    "fast": {
+      "attempts": 1,
+      "success": 1,
+      "success_rate": 100.0,
+      "fallback": 0,
+      "fallback_rate": 0.0,
+      "avg_latency_ms": 1960.0
+    },
+    "balanced": {
+      "attempts": 4,
+      "success": 4,
+      "success_rate": 100.0,
+      "fallback": 0,
+      "fallback_rate": 0.0,
+      "avg_latency_ms": 2075.0
+    },
+    "accurate": {
+      "attempts": 1,
+      "success": 1,
+      "success_rate": 100.0,
+      "fallback": 0,
+      "fallback_rate": 0.0,
+      "avg_latency_ms": 2400.0
+    }
+  },
+  "recommended_profile": "balanced",
+  "recommendation_reason": "score=89.62, success=100.00%, fallback=0.00%, latency=2075.00ms, attempts=4"
+}

@@ -12,9 +12,17 @@ Date: 2026-04-19
 
 ## Sprint Actions
 1. Profile comparison on real devices (`fast`/`balanced`/`accurate`) with 20+ runs each.
-2. Tune retry/timeout policy (currently timeout 45s + 1 retry).
+2. Tune retry/timeout policy (updated to timeout 60s + up to 3 attempts with backoff).
 3. Add language-specific prompts in UX for short/empty speech.
 4. Track failure buckets by code (`empty_transcript`, `transcription_failed`, network timeout).
+
+## Cycle 1 Result (2026-04-19)
+- Profile review file: `data/stt_profile_review_2026-04-19.md`
+- Recommendation: `balanced` (sample-size weighted winner)
+- Notes:
+  - `fast` latency was lower but sample size was too small.
+  - `accurate` sample size and latency were both less favorable for default use.
+  - Keep default `balanced` for beta and collect more runs.
 
 ## Exit Criteria
 - STT success >= 70% on real runs.

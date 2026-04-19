@@ -1,0 +1,13 @@
+{
+  "severity": "normal",
+  "action": "continue monitoring",
+  "rollback_recommended": false,
+  "alerts": [],
+  "snapshot": {
+    "total_runs": 25,
+    "analyze_success_rate": 92.0,
+    "stt_fallback_rate": 20.0,
+    "p95_latency_ms": 3800.0,
+    "mobile_runtime_audit_pass": true
+  }
+}

@@ -83,6 +83,7 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 롤백 계획: `ROLLBACK_PLAN.md`
 - STT 튜닝 계획: `STT_TUNING_PLAN.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.0-beta.md`
+- 릴리즈 노트: `RELEASE_NOTES_v0.1.1-beta.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 
@@ -104,6 +105,25 @@ python scripts/beta_kpi_summary.py ^
 python scripts/mobile_runtime_audit.py ^
   --input data/beta_run_log_2026-04-19.csv ^
   --output data/mobile_runtime_audit_2026-04-19.md
+```
+
+일일 로그 누적 시작/추가:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start_daily_beta_log.ps1 -Date 2026-04-20
+
+powershell -ExecutionPolicy Bypass -File scripts/append_beta_log.ps1 ^
+  -Date 2026-04-20 ^
+  -Tester tester_a ^
+  -Device "Pixel 7" ^
+  -Scenario Scenario1 ^
+  -Step stt_record ^
+  -AnalyzeOk true ^
+  -SttOk true ^
+  -FallbackUsed false ^
+  -LatencyMs 2100 ^
+  -Outcome pass ^
+  -Note "balanced profile"
 ```
 
 ## 백엔드 테스트
@@ -210,4 +230,30 @@ python scripts/stt_recommend.py ^
 
 ```powershell
 setx STT_RECOMMENDATION_FILE "data/stt_recommendation.json"
+```
+
+일일 자동 리포트(집계+감사+리포트 생성):
+
+```powershell
+python scripts/run_daily_beta_report.py --date 2026-04-19 --owner TheCellist --build "MVP beta"
+```
+
+STT 프로파일 리뷰(일일 로그 기반):
+
+```powershell
+python scripts/stt_profile_review.py ^
+  --input data/beta_run_log_2026-04-19.csv ^
+  --json-output data/stt_profile_review_2026-04-19.json ^
+  --md-output data/stt_profile_review_2026-04-19.md
+```
+
+일일 리스크 모니터:
+
+```powershell
+python scripts/risk_monitor.py ^
+  --date 2026-04-19 ^
+  --kpi-json data/beta_kpi_summary_2026-04-19.json ^
+  --audit-md data/mobile_runtime_audit_2026-04-19.md ^
+  --json-output data/risk_monitor_2026-04-19.json ^
+  --md-output data/risk_monitor_2026-04-19.md
 ```

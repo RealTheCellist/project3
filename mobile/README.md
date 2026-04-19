@@ -1,17 +1,36 @@
-# sumpyo_mobile
+# Sumpyo Mobile (Flutter)
 
-A new Flutter project.
+## Run
+```powershell
+flutter pub get
+flutter run
+```
 
-## Getting Started
+## Quality checks
+```powershell
+flutter analyze
+flutter test
+```
 
-This project is a starting point for a Flutter application.
+## Android release build
+1. Copy `android/key.properties.example` -> `android/key.properties`.
+2. Set real keystore values in `key.properties`.
+3. Build APK:
+```powershell
+flutter build apk --release
+```
+4. Build AAB:
+```powershell
+flutter build appbundle --release
+```
 
-A few resources to get you started if this is your first Flutter project:
+Output paths:
+- `build/app/outputs/flutter-apk/app-release.apk`
+- `build/app/outputs/bundle/release/app-release.aab`
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Windows note
+If plugin build fails with symlink messages, enable Developer Mode:
+```powershell
+start ms-settings:developers
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.

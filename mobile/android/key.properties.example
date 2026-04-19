@@ -1,0 +1,8 @@
+# Copy this file to `mobile/android/key.properties` and replace values.
+# Do not commit real credentials.
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=../keystore/upload-keystore.jks
+

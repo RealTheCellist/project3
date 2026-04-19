@@ -99,6 +99,9 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 데이터 보존 배치 워크플로우: `.github/workflows/data-retention.yml`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 - E2E 검증 리포트: `E2E_VALIDATION_2026-04-19.md`
+- 내부 릴리즈 체크리스트: `INTERNAL_RELEASE_v0.1.4_CHECKLIST.md`
+- 운영 인수인계: `OPS_HANDOVER_v0.1.4.md`
+- 다음 버전 백로그: `BACKLOG_v0.1.5.md`
 
 베타 KPI 집계 예시:
 

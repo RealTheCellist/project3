@@ -18,9 +18,12 @@ def evaluate_risk(
     *,
     kpi: dict,
     audit_pass: bool,
-    min_analyze_success_rate: float,
-    max_fallback_rate: float,
-    max_p95_latency_ms: float,
+    min_analyze_success_rate_warning: float,
+    min_analyze_success_rate_critical: float,
+    max_fallback_rate_warning: float,
+    max_fallback_rate_critical: float,
+    max_p95_latency_ms_warning: float,
+    max_p95_latency_ms_critical: float,
 ) -> dict:
     analyze_success_rate = float(kpi.get("analyze_success_rate", 0.0))
     fallback_rate = float(kpi.get("stt_fallback_rate", 0.0))
@@ -28,17 +31,31 @@ def evaluate_risk(
     total_runs = int(kpi.get("total_runs", 0))
 
     alerts: list[str] = []
-    if analyze_success_rate < min_analyze_success_rate:
+    if analyze_success_rate < min_analyze_success_rate_critical:
         alerts.append(
-            f"analyze_success_rate low ({analyze_success_rate:.2f}% < {min_analyze_success_rate:.2f}%)"
+            f"analyze_success_rate critical ({analyze_success_rate:.2f}% < {min_analyze_success_rate_critical:.2f}%)"
         )
-    if fallback_rate > max_fallback_rate:
+    elif analyze_success_rate < min_analyze_success_rate_warning:
         alerts.append(
-            f"stt_fallback_rate high ({fallback_rate:.2f}% > {max_fallback_rate:.2f}%)"
+            f"analyze_success_rate warning ({analyze_success_rate:.2f}% < {min_analyze_success_rate_warning:.2f}%)"
         )
-    if p95_latency > max_p95_latency_ms:
+
+    if fallback_rate > max_fallback_rate_critical:
         alerts.append(
-            f"p95_latency high ({p95_latency:.2f}ms > {max_p95_latency_ms:.2f}ms)"
+            f"stt_fallback_rate critical ({fallback_rate:.2f}% > {max_fallback_rate_critical:.2f}%)"
+        )
+    elif fallback_rate > max_fallback_rate_warning:
+        alerts.append(
+            f"stt_fallback_rate warning ({fallback_rate:.2f}% > {max_fallback_rate_warning:.2f}%)"
+        )
+
+    if p95_latency > max_p95_latency_ms_critical:
+        alerts.append(
+            f"p95_latency critical ({p95_latency:.2f}ms > {max_p95_latency_ms_critical:.2f}ms)"
+        )
+    elif p95_latency > max_p95_latency_ms_warning:
+        alerts.append(
+            f"p95_latency warning ({p95_latency:.2f}ms > {max_p95_latency_ms_warning:.2f}ms)"
         )
     if not audit_pass:
         alerts.append("mobile runtime audit gate failed")
@@ -48,7 +65,7 @@ def evaluate_risk(
     if not alerts:
         severity = "normal"
         action = "continue monitoring"
-    elif any("analyze_success_rate low" in a for a in alerts):
+    elif any("critical" in a for a in alerts):
         severity = "sev2"
         action = "open incident and prepare rollback decision"
     elif any("mobile runtime audit gate failed" in a for a in alerts):
@@ -71,8 +88,25 @@ def evaluate_risk(
             "stt_fallback_rate": fallback_rate,
             "p95_latency_ms": p95_latency,
             "mobile_runtime_audit_pass": audit_pass,
+            "thresholds": {
+                "min_analyze_success_rate_warning": min_analyze_success_rate_warning,
+                "min_analyze_success_rate_critical": min_analyze_success_rate_critical,
+                "max_fallback_rate_warning": max_fallback_rate_warning,
+                "max_fallback_rate_critical": max_fallback_rate_critical,
+                "max_p95_latency_ms_warning": max_p95_latency_ms_warning,
+                "max_p95_latency_ms_critical": max_p95_latency_ms_critical,
+            },
         },
     }
+
+
+def _load_thresholds(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return {}
+    return payload
 
 
 def render_markdown(
@@ -116,21 +150,40 @@ def main() -> None:
     parser.add_argument("--audit-md", required=True, help="Mobile runtime audit markdown path")
     parser.add_argument("--json-output", default="data/risk_monitor.json")
     parser.add_argument("--md-output", default="data/risk_monitor.md")
-    parser.add_argument("--min-analyze-success-rate", type=float, default=90.0)
-    parser.add_argument("--max-fallback-rate", type=float, default=20.0)
-    parser.add_argument("--max-p95-latency-ms", type=float, default=4000.0)
+    parser.add_argument("--thresholds", default="data/risk_thresholds.json")
     args = parser.parse_args()
 
     kpi_json_path = Path(args.kpi_json)
     audit_md_path = Path(args.audit_md)
     kpi = _load_json(kpi_json_path)
     audit_pass = _load_audit_pass(audit_md_path)
+    threshold_payload = _load_thresholds(Path(args.thresholds))
+    min_analyze_success_rate_warning = float(
+        threshold_payload.get("min_analyze_success_rate_warning", 91.0)
+    )
+    min_analyze_success_rate_critical = float(
+        threshold_payload.get("min_analyze_success_rate_critical", 88.0)
+    )
+    max_fallback_rate_warning = float(threshold_payload.get("max_fallback_rate_warning", 18.0))
+    max_fallback_rate_critical = float(
+        threshold_payload.get("max_fallback_rate_critical", 25.0)
+    )
+    max_p95_latency_ms_warning = float(
+        threshold_payload.get("max_p95_latency_ms_warning", 3500.0)
+    )
+    max_p95_latency_ms_critical = float(
+        threshold_payload.get("max_p95_latency_ms_critical", 4500.0)
+    )
+
     result = evaluate_risk(
         kpi=kpi,
         audit_pass=audit_pass,
-        min_analyze_success_rate=args.min_analyze_success_rate,
-        max_fallback_rate=args.max_fallback_rate,
-        max_p95_latency_ms=args.max_p95_latency_ms,
+        min_analyze_success_rate_warning=min_analyze_success_rate_warning,
+        min_analyze_success_rate_critical=min_analyze_success_rate_critical,
+        max_fallback_rate_warning=max_fallback_rate_warning,
+        max_fallback_rate_critical=max_fallback_rate_critical,
+        max_p95_latency_ms_warning=max_p95_latency_ms_warning,
+        max_p95_latency_ms_critical=max_p95_latency_ms_critical,
     )
 
     json_out = Path(args.json_output)
@@ -152,4 +205,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

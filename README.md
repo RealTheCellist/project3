@@ -84,7 +84,9 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - STT 튜닝 계획: `STT_TUNING_PLAN.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.0-beta.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.1-beta.md`
+- 릴리즈 노트(초안): `RELEASE_NOTES_v0.1.2-beta-draft.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
+- 장애 대응 모의훈련: `INCIDENT_DRILL_2026-04-20.md`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 
 베타 KPI 집계 예시:
@@ -254,6 +256,23 @@ python scripts/risk_monitor.py ^
   --date 2026-04-19 ^
   --kpi-json data/beta_kpi_summary_2026-04-19.json ^
   --audit-md data/mobile_runtime_audit_2026-04-19.md ^
+  --thresholds data/risk_thresholds.json ^
   --json-output data/risk_monitor_2026-04-19.json ^
   --md-output data/risk_monitor_2026-04-19.md
 ```
+
+최신 로그 기준 일일 운영 파이프라인(집계+감사+리스크+프로파일리뷰):
+
+```powershell
+python scripts/run_latest_daily_ops.py --owner TheCellist --build "MVP beta"
+```
+
+GitHub Actions:
+- `.github/workflows/daily-ops.yml` (cron + 수동 실행)
+
+운영 임계치 설정 파일:
+- `data/risk_thresholds.json`
+
+STT 2차 프로파일 리뷰 산출물:
+- `data/stt_profile_review_2026-04-20.json`
+- `data/stt_profile_review_2026-04-20.md`

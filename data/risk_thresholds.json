@@ -1,0 +1,8 @@
+{
+  "min_analyze_success_rate_warning": 91.0,
+  "min_analyze_success_rate_critical": 88.0,
+  "max_fallback_rate_warning": 18.0,
+  "max_fallback_rate_critical": 25.0,
+  "max_p95_latency_ms_warning": 3500.0,
+  "max_p95_latency_ms_critical": 4500.0
+}

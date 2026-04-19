@@ -33,10 +33,16 @@ Owner: TheCellist
 4. Post resolution + root cause summary.
 
 ## Daily Risk Thresholds
-- Analyze success rate < 90%: escalate to `sev2`
-- STT fallback rate > 20%: escalate to `sev2`
-- P95 latency > 4000ms: escalate to `sev2`
+- Analyze success rate:
+  - warning < 91%
+  - critical < 88% (`sev2`)
+- STT fallback rate:
+  - warning > 18%
+  - critical > 25% (`sev2`)
+- P95 latency:
+  - warning > 3500ms
+  - critical > 4500ms (`sev2`)
 - Mobile runtime audit FAIL: stop external rollout and escalate
 
 Run:
-- `python scripts/risk_monitor.py --date YYYY-MM-DD --kpi-json data/beta_kpi_summary_YYYY-MM-DD.json --audit-md data/mobile_runtime_audit_YYYY-MM-DD.md --json-output data/risk_monitor_YYYY-MM-DD.json --md-output data/risk_monitor_YYYY-MM-DD.md`
+- `python scripts/risk_monitor.py --date YYYY-MM-DD --kpi-json data/beta_kpi_summary_YYYY-MM-DD.json --audit-md data/mobile_runtime_audit_YYYY-MM-DD.md --thresholds data/risk_thresholds.json --json-output data/risk_monitor_YYYY-MM-DD.json --md-output data/risk_monitor_YYYY-MM-DD.md`

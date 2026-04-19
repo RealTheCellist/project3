@@ -1,0 +1,48 @@
+name: Daily Ops
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "YYYY-MM-DD (optional)"
+        required: false
+        type: string
+
+jobs:
+  run-daily-ops:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run daily ops
+        shell: bash
+        run: |
+          DATE_INPUT="${{ github.event.inputs.date }}"
+          if [ -n "$DATE_INPUT" ]; then
+            python scripts/run_latest_daily_ops.py --date "$DATE_INPUT" --owner "TheCellist" --build "MVP beta (CI)"
+          else
+            python scripts/run_latest_daily_ops.py --owner "TheCellist" --build "MVP beta (CI)"
+          fi
+
+      - name: Upload generated artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-ops-artifacts
+          path: |
+            data/beta_kpi_summary_*.json
+            data/mobile_runtime_audit_*.md
+            data/risk_monitor_*.json
+            data/risk_monitor_*.md
+            data/stt_profile_review_*.json
+            data/stt_profile_review_*.md
+            DAILY_BETA_REPORT_*.md
+          if-no-files-found: warn
+

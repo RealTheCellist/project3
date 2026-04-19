@@ -24,6 +24,18 @@ Date: 2026-04-19
   - `accurate` sample size and latency were both less favorable for default use.
   - Keep default `balanced` for beta and collect more runs.
 
+## Cycle 2 Result (2026-04-20)
+- Profile review file: `data/stt_profile_review_2026-04-20.md`
+- Input runs: `data/beta_run_log_2026-04-20.csv` (30 runs, profile-tagged STT attempts)
+- Recommendation: `fast`
+- Summary:
+  - `fast`: attempts=7, success_rate=85.71%, fallback_rate=14.29%, avg_latency=1942.86ms
+  - `balanced`: attempts=6, success_rate=83.33%, fallback_rate=16.67%, avg_latency=2146.67ms
+  - `accurate`: attempts=5, success_rate=80.00%, fallback_rate=20.00%, avg_latency=2518.00ms
+- Decision:
+  - Keep global default `balanced` for now.
+  - Use `fast` as recommended profile for unstable network segments and low-latency paths.
+
 ## Exit Criteria
 - STT success >= 70% on real runs.
 - Fallback rate <= 20%.

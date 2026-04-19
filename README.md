@@ -80,13 +80,15 @@ Windows에서 플러그인 빌드 오류가 나면 Developer Mode를 켜세요:
 - 지원 채널 런북: `SUPPORT_CHANNEL_RUNBOOK.md`
 - 데이터 보존/삭제 정책: `DATA_RETENTION_POLICY.md`
 - Go/No-Go 기록: `GO_NO_GO_2026-04-19.md`
+- Go/No-Go 기록: `GO_NO_GO_2026-04-21.md`
 - 롤백 계획: `ROLLBACK_PLAN.md`
 - STT 튜닝 계획: `STT_TUNING_PLAN.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.0-beta.md`
 - 릴리즈 노트: `RELEASE_NOTES_v0.1.1-beta.md`
-- 릴리즈 노트(초안): `RELEASE_NOTES_v0.1.2-beta-draft.md`
+- 릴리즈 노트: `RELEASE_NOTES_v0.1.2-beta.md`
 - 릴리즈 아카이브: `releases/2026-04-19-mvp-beta/README.md`
 - 장애 대응 모의훈련: `INCIDENT_DRILL_2026-04-20.md`
+- Actions 검증 메모: `ACTIONS_VERIFICATION_2026-04-21.md`
 - 모바일 런타임 세션 체크리스트: `MOBILE_RUNTIME_SESSION_CHECKLIST.md`
 
 베타 KPI 집계 예시:

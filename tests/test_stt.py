@@ -58,6 +58,26 @@ class STTEndpointTests(unittest.TestCase):
         self.assertEqual(data["profile"], "balanced")
         self.assertIn("beam_size", data)
 
+    @patch("app.main.transcribe_audio_file")
+    def test_stt_auto_profile_with_network(self, mock_transcribe):
+        mock_transcribe.return_value = STTResult(
+            transcript="auto profile transcript",
+            provider="faster_whisper",
+            profile="balanced",
+            model_name="small",
+            device="cpu",
+            compute_type="int8",
+            duration_ms=99,
+        )
+        files = {"file": ("sample.wav", b"fake-audio-bytes", "audio/wav")}
+
+        res = self.client.post("/stt?language=ko&profile=auto&network=good", files=files)
+        self.assertEqual(res.status_code, 200)
+        mock_transcribe.assert_called_once()
+        kwargs = mock_transcribe.call_args.kwargs
+        self.assertEqual(kwargs["profile"], "auto")
+        self.assertEqual(kwargs["network_quality"], "good")
+
     def test_stt_profiles_endpoint(self):
         res = self.client.get("/stt/profiles")
         self.assertEqual(res.status_code, 200)

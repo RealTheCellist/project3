@@ -364,7 +364,8 @@ def report_export_pdf(
 async def stt(
     file: UploadFile = File(...),
     language: str = Query(default="ko", min_length=2, max_length=10),
-    profile: str = Query(default="balanced", pattern="^(fast|balanced|accurate)$"),
+    profile: str = Query(default="balanced", pattern="^(fast|balanced|accurate|auto)$"),
+    network: str = Query(default="normal", pattern="^(poor|normal|good)$"),
 ) -> STTResponse:
     filename = file.filename or "audio.wav"
     suffix = os.path.splitext(filename)[1] or ".wav"
@@ -378,7 +379,12 @@ async def stt(
                 raise HTTPException(status_code=400, detail="Uploaded file is empty")
             tmp.write(content)
 
-        result = transcribe_audio_file(tmp_path, language=language, profile=profile)
+        result = transcribe_audio_file(
+            tmp_path,
+            language=language,
+            profile=profile,
+            network_quality=network,
+        )
         logger.info(
             "stt_success profile=%s provider=%s duration_ms=%s model=%s device=%s",
             result.profile,
@@ -419,9 +425,10 @@ async def stt(
 
 @app.get("/stt/config", response_model=STTConfigResponse)
 def stt_config(
-    profile: str = Query(default="balanced", pattern="^(fast|balanced|accurate)$"),
+    profile: str = Query(default="balanced", pattern="^(fast|balanced|accurate|auto)$"),
+    network: str = Query(default="normal", pattern="^(poor|normal|good)$"),
 ) -> STTConfigResponse:
-    cfg = get_stt_runtime_config(profile_override=profile)
+    cfg = get_stt_runtime_config(profile_override=profile, network_quality=network)
     return STTConfigResponse(
         provider=cfg.provider,
         profile=cfg.profile,

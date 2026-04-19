@@ -54,6 +54,7 @@ class _RootScreenState extends State<RootScreen> {
   bool _recording = false;
   bool _speechReady = false;
   String _sttProfile = 'balanced';
+  String _sttNetwork = 'normal';
   int _sttAttempts = 0;
   int _sttFallbacks = 0;
   final List<String> _sttTrace = <String>[];
@@ -205,7 +206,7 @@ class _RootScreenState extends State<RootScreen> {
     );
     if (!mounted) return;
     setState(() => _recording = true);
-    _pushSttTrace('recording_started', 'profile=$_sttProfile');
+    _pushSttTrace('recording_started', 'profile=$_sttProfile, network=$_sttNetwork');
   }
 
   Future<void> _transcribeAndAnalyze(String path) async {
@@ -217,11 +218,15 @@ class _RootScreenState extends State<RootScreen> {
     _pushSttTrace('pipeline_started', 'attempt=$_sttAttempts');
     try {
       _pushSttTrace('uploading_audio');
-      final stt = await ApiClient().transcribeAudio(path, profile: _sttProfile);
+      final stt = await ApiClient().transcribeAudio(
+        path,
+        profile: _sttProfile,
+        network: _sttNetwork,
+      );
       if (!mounted) return;
       _pushSttTrace(
         'stt_ok',
-        'chars=${stt.transcript.length}, profile=$_sttProfile',
+        'chars=${stt.transcript.length}, profile=$_sttProfile, network=$_sttNetwork',
       );
       _text.text = stt.transcript;
       await analyze(fromPipeline: true);
@@ -284,7 +289,9 @@ class _RootScreenState extends State<RootScreen> {
         listening: _listening,
         recording: _recording,
         sttProfile: _sttProfile,
+        sttNetwork: _sttNetwork,
         onSttProfileChanged: (v) => setState(() => _sttProfile = v),
+        onSttNetworkChanged: (v) => setState(() => _sttNetwork = v),
         sttAttempts: _sttAttempts,
         sttFallbacks: _sttFallbacks,
         sttTrace: _sttTrace,
@@ -345,7 +352,9 @@ class HomeTab extends StatelessWidget {
     required this.listening,
     required this.recording,
     required this.sttProfile,
+    required this.sttNetwork,
     required this.onSttProfileChanged,
+    required this.onSttNetworkChanged,
     required this.sttAttempts,
     required this.sttFallbacks,
     required this.sttTrace,
@@ -361,7 +370,9 @@ class HomeTab extends StatelessWidget {
   final bool listening;
   final bool recording;
   final String sttProfile;
+  final String sttNetwork;
   final ValueChanged<String> onSttProfileChanged;
+  final ValueChanged<String> onSttNetworkChanged;
   final int sttAttempts;
   final int sttFallbacks;
   final List<String> sttTrace;
@@ -392,19 +403,34 @@ class HomeTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text('STT'),
-            const SizedBox(width: 8),
             DropdownButton<String>(
               value: sttProfile,
               items: const [
                 DropdownMenuItem(value: 'fast', child: Text('fast')),
                 DropdownMenuItem(value: 'balanced', child: Text('balanced')),
                 DropdownMenuItem(value: 'accurate', child: Text('accurate')),
+                DropdownMenuItem(value: 'auto', child: Text('auto')),
               ],
               onChanged: (v) {
                 if (v != null) onSttProfileChanged(v);
+              },
+            ),
+            const Text('Network'),
+            DropdownButton<String>(
+              value: sttNetwork,
+              items: const [
+                DropdownMenuItem(value: 'poor', child: Text('poor')),
+                DropdownMenuItem(value: 'normal', child: Text('normal')),
+                DropdownMenuItem(value: 'good', child: Text('good')),
+              ],
+              onChanged: (v) {
+                if (v != null) onSttNetworkChanged(v);
               },
             ),
           ],
@@ -1992,12 +2018,13 @@ class ApiClient {
     String filePath, {
     String language = 'ko',
     String profile = 'balanced',
+    String network = 'normal',
   }) async {
     Object? lastError;
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
         final uri = Uri.parse(
-          '$_baseUrl/stt?language=$language&profile=$profile',
+          '$_baseUrl/stt?language=$language&profile=$profile&network=$network',
         );
         final req = http.MultipartRequest('POST', uri);
         req.files.add(await http.MultipartFile.fromPath('file', filePath));

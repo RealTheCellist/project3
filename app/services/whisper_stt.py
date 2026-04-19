@@ -73,6 +73,73 @@ def _recommendation_file_path() -> Path:
     return Path(os.getenv("STT_RECOMMENDATION_FILE", "data/stt_recommendation.json"))
 
 
+def _autoselect_rules_file_path() -> Path:
+    return Path(os.getenv("STT_AUTOSELECT_RULES_FILE", "data/stt_autoselect_rules.json"))
+
+
+def _profile_review_file_path() -> Path:
+    env_path = os.getenv("STT_PROFILE_REVIEW_FILE", "").strip()
+    if env_path:
+        return Path(env_path)
+    data_dir = Path("data")
+    candidates = sorted(data_dir.glob("stt_profile_review_*.json"))
+    if candidates:
+        return candidates[-1]
+    return data_dir / "stt_profile_review.json"
+
+
+def _load_json_file(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def _auto_select_profile(network_quality: str = "normal") -> str:
+    allowed_network = {"poor", "normal", "good"}
+    network = network_quality if network_quality in allowed_network else "normal"
+
+    rules = _load_json_file(_autoselect_rules_file_path()) or {}
+    review = _load_json_file(_profile_review_file_path()) or {}
+
+    preferred = str(rules.get("preferred_default", "balanced")).strip().lower()
+    network_rules = rules.get("network_rules", {})
+    if not isinstance(network_rules, dict):
+        network_rules = {}
+    selected = str(network_rules.get(network, preferred)).strip().lower() or preferred
+
+    profiles = _profiles()
+    if selected not in profiles:
+        selected = "balanced"
+
+    review_profiles = review.get("profiles", {})
+    if not isinstance(review_profiles, dict):
+        review_profiles = {}
+    selected_stats = review_profiles.get(selected, {})
+    if not isinstance(selected_stats, dict):
+        selected_stats = {}
+    fallback_rate = float(selected_stats.get("fallback_rate", 0.0) or 0.0)
+    avg_latency = float(selected_stats.get("avg_latency_ms", 0.0) or 0.0)
+    fb_threshold = float(rules.get("fallback_rate_override_threshold", 20.0))
+    lat_threshold = float(rules.get("latency_override_threshold_ms", 2200.0))
+
+    recommended = str(review.get("recommended_profile", "")).strip().lower()
+    if (
+        recommended in profiles
+        and recommended != selected
+        and (fallback_rate > fb_threshold or avg_latency > lat_threshold)
+    ):
+        selected = recommended
+
+    return selected
+
+
 def _recommended_profile_from_file() -> str | None:
     path = _recommendation_file_path()
     if not path.exists():
@@ -88,11 +155,18 @@ def _recommended_profile_from_file() -> str | None:
     return None
 
 
-def get_stt_runtime_config(profile_override: str | None = None) -> STTRuntimeConfig:
+def get_stt_runtime_config(
+    profile_override: str | None = None,
+    network_quality: str = "normal",
+) -> STTRuntimeConfig:
     default_profile = os.getenv("STT_PROFILE", "").strip().lower() or (
         _recommended_profile_from_file() or "balanced"
     )
-    profile = (profile_override or default_profile).strip().lower()
+    requested = (profile_override or default_profile).strip().lower()
+    if requested == "auto":
+        profile = _auto_select_profile(network_quality=network_quality)
+    else:
+        profile = requested
     defaults = _profiles().get(profile, _profiles()["balanced"])
 
     provider = os.getenv("STT_PROVIDER", "faster_whisper").strip().lower()
@@ -156,13 +230,19 @@ def _transcribe_openai_whisper(
 
 
 def transcribe_audio_file(
-    audio_path: str, language: str = "ko", profile: str | None = None
+    audio_path: str,
+    language: str = "ko",
+    profile: str | None = None,
+    network_quality: str = "normal",
 ) -> STTResult:
     file_path = Path(audio_path)
     if not file_path.exists():
         raise STTServiceError("audio_not_found", "Audio file not found")
 
-    cfg = get_stt_runtime_config(profile_override=profile)
+    cfg = get_stt_runtime_config(
+        profile_override=profile,
+        network_quality=network_quality,
+    )
     started = time.perf_counter()
 
     try:

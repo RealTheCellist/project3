@@ -180,4 +180,31 @@ void main() {
     expect(find.textContaining('conf=0.22 · item 8'), findsOneWidget);
     expect(find.textContaining('conf=0.88 · item 1'), findsNothing);
   });
+  testWidgets('Home STT controls include auto profile and network selector', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const SumpyoApp());
+
+    final dropdowns = tester.widgetList<DropdownButton<String>>(
+      find.byType(DropdownButton<String>),
+    );
+    expect(dropdowns.length, 2);
+
+    final profileItems = dropdowns.first.items ?? const <DropdownMenuItem<String>>[];
+    final profileValues = profileItems
+        .map((e) => e.value)
+        .whereType<String>()
+        .toList();
+    expect(
+      profileValues,
+      containsAll(<String>['fast', 'balanced', 'accurate', 'auto']),
+    );
+
+    final networkItems = dropdowns.last.items ?? const <DropdownMenuItem<String>>[];
+    final networkValues = networkItems
+        .map((e) => e.value)
+        .whereType<String>()
+        .toList();
+    expect(networkValues, containsAll(<String>['poor', 'normal', 'good']));
+  });
 }

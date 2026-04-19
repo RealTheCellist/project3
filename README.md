@@ -18,8 +18,8 @@ uvicorn app.main:app --reload
 - 히스토리 API: `GET http://127.0.0.1:8000/checkins?limit=20`
 - 리포트 요약 API: `GET http://127.0.0.1:8000/report/summary?days=7&limit=200`
 - 리포트 PDF API: `GET http://127.0.0.1:8000/report/export-pdf?days=7&limit=200`
-- STT API: `POST http://127.0.0.1:8000/stt` (multipart file, `profile=fast|balanced|accurate`)
-- STT Config: `GET http://127.0.0.1:8000/stt/config?profile=balanced`
+- STT API: `POST http://127.0.0.1:8000/stt` (multipart file, `profile=fast|balanced|accurate|auto`, `network=poor|normal|good`)
+- STT Config: `GET http://127.0.0.1:8000/stt/config?profile=balanced&network=normal`
 - STT Profiles: `GET http://127.0.0.1:8000/stt/profiles`
 
 ## 예시 요청
@@ -181,7 +181,7 @@ uvicorn app.main:app --reload
 - `balanced`: small + beam 3 (기본 권장)
 - `accurate`: medium + beam 5 (정확도 우선, 느림)
 
-Flutter 앱에서는 Home 화면에서 STT Profile(`fast/balanced/accurate`)을 선택할 수 있습니다.
+Flutter 앱에서는 Home 화면에서 STT Profile(`fast/balanced/accurate/auto`)과 Network(`poor/normal/good`)를 선택할 수 있습니다.
 Home 화면의 `STT Pipeline Diagnostics` 카드에서 시도 횟수/폴백 횟수/단계 로그를 확인할 수 있습니다.
 
 STT 에러 코드는 `detail.code`로 내려옵니다:
@@ -287,6 +287,19 @@ python scripts/stt_profile_autoselect.py ^
   --review-json data/stt_profile_review_2026-04-21.json ^
   --output data/stt_autoselect_normal_2026-04-21.json
 ```
+
+일일 운영 파이프라인 실행 시 최신 `stt_profile_review_YYYY-MM-DD.json` 기반으로
+`poor/normal/good` 3개 네트워크 프로파일 결과를 자동 생성합니다:
+
+```powershell
+python scripts/run_latest_daily_ops.py --owner TheCellist --build "MVP beta"
+```
+
+생성 산출물:
+- `data/stt_autoselect_poor_YYYY-MM-DD.json`
+- `data/stt_autoselect_normal_YYYY-MM-DD.json`
+- `data/stt_autoselect_good_YYYY-MM-DD.json`
+- `data/stt_runtime_sync_YYYY-MM-DD.md`
 
 로그 익명화 백필:
 

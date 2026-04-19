@@ -76,9 +76,52 @@ def main() -> None:
             f"data/stt_profile_review_{date}.md",
         ]
     )
+    review_json = f"data/stt_profile_review_{date}.json"
+    rules_json = "data/stt_autoselect_rules.json"
+    for network in ("poor", "normal", "good"):
+        _run(
+            [
+                sys.executable,
+                "scripts/stt_profile_autoselect.py",
+                "--network",
+                network,
+                "--rules",
+                rules_json,
+                "--review-json",
+                review_json,
+                "--output",
+                f"data/stt_autoselect_{network}_{date}.json",
+            ]
+        )
+
+    runtime_sync = root / "data" / f"stt_runtime_sync_{date}.md"
+    runtime_sync.write_text(
+        "\n".join(
+            [
+                "# STT Runtime Sync",
+                "",
+                f"- date: {date}",
+                f"- review_json: {review_json}",
+                f"- rules_json: {rules_json}",
+                "- generated_profiles:",
+                f"  - data/stt_autoselect_poor_{date}.json",
+                f"  - data/stt_autoselect_normal_{date}.json",
+                f"  - data/stt_autoselect_good_{date}.json",
+                "",
+                "## Runtime env reference",
+                "- STT_AUTOSELECT_RULES_FILE=data/stt_autoselect_rules.json",
+                f"- STT_PROFILE_REVIEW_FILE=data/stt_profile_review_{date}.json",
+                "",
+                "## App/API usage",
+                "- call /stt with profile=auto and network=poor|normal|good",
+                "- call /stt/config with profile=auto and network=poor|normal|good",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
     print(f"daily ops completed for {date}")
 
 
 if __name__ == "__main__":
     main()
-
